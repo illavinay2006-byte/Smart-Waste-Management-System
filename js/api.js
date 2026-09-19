@@ -129,6 +129,10 @@ const API = {
       }
 
       ClientEngine.setCurrentUser(user);
+      if (user.role === "citizen") {
+        localStorage.setItem("sw_active_citizen", JSON.stringify(user));
+        ClientEngine.assignReportsToCitizen(user);
+      }
       return { message: "Login successful", user };
     }
 
@@ -160,19 +164,36 @@ const API = {
         ClientEngine.set("users", users);
       }
       ClientEngine.setCurrentUser(user);
+      localStorage.setItem("sw_active_citizen", JSON.stringify(user));
+      ClientEngine.assignReportsToCitizen(user);
       return { message: "Account created successfully", user };
     }
 
     if (path === "/auth/switch-demo" && method === "POST") {
       const role = (parsedBody.role || "citizen").toLowerCase();
       const users = ClientEngine.get("users");
-      const user = users.find(u => u.role === role) || users[0];
+      
+      let user = null;
+      if (role === "citizen") {
+        try {
+          const savedCitizen = JSON.parse(localStorage.getItem("sw_active_citizen") || "null");
+          if (savedCitizen && savedCitizen.role === "citizen") {
+            user = savedCitizen;
+          }
+        } catch (e) {}
+      }
+
+      if (!user) {
+        user = users.find(u => u.role === role) || users[0];
+      }
+
       ClientEngine.setCurrentUser(user);
       return { message: `Switched demo role to ${role}`, user };
     }
 
     if (path === "/auth/logout" && method === "POST") {
       ClientEngine.setCurrentUser(null);
+      localStorage.removeItem("sw_active_citizen");
       return { message: "Logged out successfully" };
     }
 
@@ -283,11 +304,13 @@ const API = {
 
       const priorityCalc = ClientEngine.calculatePriority(severity, roadObstruction, category, duration);
       const priority = isEmergency ? "CRITICAL" : priorityCalc.priority;
+      let activeCit = null;
+      try { activeCit = JSON.parse(localStorage.getItem("sw_active_citizen") || "null"); } catch (e) {}
 
       const newReport = {
         id: reportId,
-        citizen_id: currentUser ? currentUser.id : 1,
-        citizen_name: currentUser ? currentUser.name : "Akash Kothagorla",
+        citizen_id: currentUser ? currentUser.id : (activeCit ? activeCit.id : 1),
+        citizen_name: currentUser ? currentUser.name : (activeCit ? activeCit.name : "Citizen"),
         category: category,
         severity: severity,
         priority: priority,

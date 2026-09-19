@@ -58,11 +58,14 @@ def login():
 
     # Invalidate any prior active session and issue new exclusive session token
     issue_user_session(user)
+    if user.role == "citizen":
+        session["authenticated_citizen_id"] = user.id
     return jsonify({"message": "Login successful", "user": user.to_dict(include_sensitive=True)}), 200
 
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
+    session.pop("authenticated_citizen_id", None)
     terminate_user_session()
     return jsonify({"message": "Logged out successfully"}), 200
 
@@ -73,23 +76,27 @@ def get_current_user():
     if not user:
         # If user_id existed in session but token mismatched, session was cleared
         return jsonify({"authenticated": False, "user": None}), 200
-
     return jsonify({"authenticated": True, "user": user.to_dict(include_sensitive=True)}), 200
 
 
 @auth_bp.route("/switch-demo", methods=["POST"])
 def switch_demo():
-    """Allows rapid switching between standard demo roles for evaluation"""
+    """Allows rapid switching between standard demo roles for evaluation while preserving logged in citizen"""
     data = request.get_json() or {}
     role = data.get("role", "citizen").strip().lower()
 
-    demo_email = {
-        "citizen": "citizen@demo.com",
-        "officer": "officer@demo.com",
-        "worker": "worker@demo.com"
-    }.get(role, "citizen@demo.com")
+    user = None
+    if role == "citizen" and session.get("authenticated_citizen_id"):
+        user = db.session.get(User, session.get("authenticated_citizen_id"))
 
-    user = User.query.filter_by(email=demo_email).first()
+    if not user:
+        demo_email = {
+            "citizen": "citizen@demo.com",
+            "officer": "officer@demo.com",
+            "worker": "worker@demo.com"
+        }.get(role, "citizen@demo.com")
+        user = User.query.filter_by(email=demo_email).first()
+
     if not user:
         user = User.query.filter_by(role=role).first()
     if not user:

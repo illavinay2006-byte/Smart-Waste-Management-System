@@ -203,6 +203,42 @@ const ClientEngine = {
     }
   },
 
+  // Seamlessly assign legacy reports to active logged-in citizen
+  assignReportsToCitizen(citizen) {
+    if (!citizen || !citizen.name) return;
+    try {
+      const reports = JSON.parse(localStorage.getItem("sw_reports") || "[]");
+      let changed = false;
+      reports.forEach(r => {
+        if (!r.citizen_name || r.citizen_name === "Akash Kothagorla" || r.citizen_id === 1 || !r.citizen_id) {
+          r.citizen_name = citizen.name;
+          r.citizen_id = citizen.id;
+          if (r.history) {
+            r.history.forEach(h => {
+              if (h.changed_by === "Akash Kothagorla") {
+                h.changed_by = citizen.name;
+              }
+            });
+          }
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem("sw_reports", JSON.stringify(reports));
+      }
+
+      // Also clean up default demo citizen from sw_users
+      const users = JSON.parse(localStorage.getItem("sw_users") || "[]");
+      const cleanedUsers = users.filter(u => u.name !== "Akash Kothagorla" && u.email !== "citizen@demo.com");
+      if (!cleanedUsers.some(u => u.id === citizen.id || u.email === citizen.email)) {
+        cleanedUsers.unshift(citizen);
+      }
+      localStorage.setItem("sw_users", JSON.stringify(cleanedUsers));
+    } catch (e) {
+      console.warn("Could not reassign reports:", e);
+    }
+  },
+
   // Initialize Default Database in localStorage
   initDB() {
     this.migrateReportImageUrls();

@@ -64,6 +64,9 @@ const App = {
   showAppInterface(user) {
     this.currentUser = user;
     this.activeRole = user.role || "citizen";
+    if (user.role === "citizen") {
+      try { localStorage.setItem("sw_active_citizen", JSON.stringify(user)); } catch (e) {}
+    }
 
     const gateway = document.getElementById("auth-gateway-screen");
     const appLayout = document.getElementById("app-layout");
@@ -183,11 +186,15 @@ const App = {
     } catch (e) {}
     try { sessionStorage.removeItem("sw_user_logged_in"); } catch (e) {}
     try { localStorage.removeItem("sw_active_session_user"); } catch (e) {}
+    try { localStorage.removeItem("sw_active_citizen"); } catch (e) {}
     this.currentUser = null;
     this.showGatewayScreen();
   },
 
   async switchRole(role) {
+    if (this.currentUser && this.currentUser.role === "citizen") {
+      try { localStorage.setItem("sw_active_citizen", JSON.stringify(this.currentUser)); } catch (e) {}
+    }
     try {
       const res = await API.switchDemo(role);
       SWNotice.success(`Switched active view to ${role.toUpperCase()}`);

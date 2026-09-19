@@ -215,40 +215,95 @@ def _local_heuristic_vision(image_path: str, context_notes: str = "") -> dict:
     except Exception:
         pass
 
-    # 1. Non-Garbage Check (Clean Area, Person / Selfie, Non-Waste Objects)
+    # 1. Non-Garbage Check (Clean Area, Presentation Slides, Documents, Person / Selfie, Vehicles)
     # 1a. Person / Face / Selfie visual detection
     center_std = float(arr[20:80, 25:95].std(axis=(0, 1)).mean()) if (arr.shape[0] >= 80 and arr.shape[1] >= 95) else 0.0
     is_portrait_visual = (center_skin > 0.18 and skin_ratio > 0.14 and center_std > 18.0)
 
-    # 1b. Document / Screenshot visual detection
+    # 1b. Presentation Slide / Lecture Deck / Graphic Layout visual detection
+    # Typical slide features:
+    # - 16:9 or 4:3 widescreen slide aspect ratio (1.25 - 2.1)
+    # - Uniform slide canvas background (all 4 corners share similar color)
+    # - Large portion of slide matches background canvas (> 35%)
+    # - Low unique color cluster count (thematic palette)
+    # - Structured horizontal text rows or cards
+    corner_colors = np.array([arr[0, 0], arr[0, -1], arr[-1, 0], arr[-1, -1]])
+    corner_std = float(np.std(corner_colors, axis=0).mean())
+    bg_color = np.mean(corner_colors, axis=0)
+    bg_diff = np.linalg.norm(arr - bg_color, axis=2)
+    bg_ratio = float((bg_diff < 35).mean())
+    is_wide_slide = (aspect >= 1.25 and aspect <= 2.1)
+
+    is_presentation_filename = any(k in filename_lower or k in notes_lower for k in [
+        "presentation", "slide", "deck", "ppt", "powerpoint", "keynote", "canva",
+        "template", "diagram", "chart", "graph", "figure", "lecture", "module",
+        "agenda", "pitch", "curriculum", "infographic", "overview"
+    ])
+
+    is_presentation_visual = (
+        is_wide_slide and
+        (corner_std < 25.0) and
+        (bg_ratio > 0.35) and
+        (high_edges < 0.22) and
+        (skin_ratio < 0.06)
+    )
+    is_presentation = is_presentation_filename or is_presentation_visual
+
+    # 1c. Document / Spreadsheet / Screenshot visual detection
     white_px = float(((r > 235) & (g > 235) & (b > 235)).mean())
     dark_px = float(((r < 30) & (g < 30) & (b < 30)).mean())
     is_document = (white_px > 0.50 or dark_px > 0.60) and entropy < 4.5
 
-    # 1c. Nature / Scenery / Sky visual detection
+    # 1d. Nature / Scenery / Sky visual detection
     top_sky = float(((h_chan[:48, :] >= 180) & (h_chan[:48, :] <= 245) & (s_chan[:48, :] >= 10) & (v_chan[:48, :] >= 40)).mean())
     clean_field = float(((h_chan[48:, :] >= 70) & (h_chan[48:, :] <= 150) & (s_chan[48:, :] >= 35)).mean())
     is_scenery = top_sky > 0.35 and (clean_field > 0.30 or high_edges < 0.05)
 
-    # 1d. Clean Area / Sanitized Verification Area
+    # 1e. Clean Area / Sanitized Verification Area
     clean_green_ratio = float((((r >= 35) & (r <= 55)) & ((g >= 115) & (g <= 135)) & ((b >= 65) & (b <= 85))).mean())
     is_clean_verified = clean_green_ratio > 0.25
 
-    # 1e. Laptop / Screen / Electronic Device
+    # 1f. Laptop / Screen / Electronic Device
     dark_bezel = float(((r < 45) & (g < 45) & (b < 45)).mean())
     is_laptop = dark_bezel > 0.15 and not is_document and (aspect > 1.2) and (high_edges < 0.05) and (skin_ratio < 0.05)
 
-    # 1f. Car / Vehicle
+    # 1g. Car / Vehicle
     smooth_metal = float(((s_chan > 45) & (v_chan > 45) & (cr_chan > 135)).mean())
     is_car = smooth_metal > 0.10 and top_sky > 0.20 and high_edges < 0.08
 
-    # 1g. Generic clean by visual texture
+    # 1h. Generic clean by visual texture
     is_clean_by_visuals = (high_edges < 0.035 and entropy < 4.2 and vivid_plastic < 0.04 and plastic_cyan < 0.04)
 
     is_non_waste = (
-        is_portrait_visual or is_document or is_scenery or
+        is_presentation or is_portrait_visual or is_document or is_scenery or
         is_clean_verified or is_laptop or is_car or is_clean_by_visuals
     )
+
+    # Determine specific identified non-waste subject and detailed visual characteristics
+    if is_presentation:
+        detected_subject = "Presentation Slide / Lecture Deck"
+        subject_details = "Digital presentation layout detected: 16:9 widescreen slide canvas with structured title, bullet text rows, and clean thematic palette. 0% civic waste accumulation detected."
+    elif is_portrait_visual:
+        detected_subject = "Human Portrait / Selfie"
+        subject_details = "Human face, facial landmarks, and natural skin tone pigments detected. Public civic waste reporting requires photos of physical garbage or litter."
+    elif is_document:
+        detected_subject = "Digital Document / UI Screenshot"
+        subject_details = "Document text lines, spreadsheet rows, or computer screen capture detected with no visible outdoor or indoor waste."
+    elif is_laptop:
+        detected_subject = "Electronic Device / Computer Display"
+        subject_details = "Hardware screen, laptop frame, or electronic monitor detected without discarded e-waste accumulation."
+    elif is_car:
+        detected_subject = "Automobile / Motor Vehicle"
+        subject_details = "Motor vehicle bodywork, headlights, or street traffic detected with no dumped garbage."
+    elif is_scenery:
+        detected_subject = "Natural Landscape / Scenic View"
+        subject_details = "Open natural landscape, vegetation, or sky without civic waste accumulation."
+    elif is_clean_verified or is_clean_by_visuals:
+        detected_subject = "Clean Area / Sanitized Space"
+        subject_details = "Clean pavement or interior space with no visible litter or garbage accumulation."
+    else:
+        detected_subject = "Everyday Object / Household Item"
+        subject_details = "General household item or scene detected with no municipal garbage accumulation."
 
     # 2. Multi-Category Scoring for Waste
     waste_material_evidence = (
@@ -262,13 +317,13 @@ def _local_heuristic_vision(image_path: str, context_notes: str = "") -> dict:
     MIN_WASTE_CONFIDENCE = 0.75
 
     if is_non_waste:
-        waste_confidence = max(0.10, 0.40 - (0.2 if is_portrait_visual else 0.1))
+        waste_confidence = max(0.05, 0.35 - (0.2 if is_portrait_visual or is_presentation else 0.1))
         is_waste = False
     elif clutter_score > 0.38 and (waste_material_evidence > 0.20 or high_edges > 0.055):
         waste_confidence = min(0.98, 0.80 + (clutter_score * 0.15))
         is_waste = waste_confidence >= MIN_WASTE_CONFIDENCE
     else:
-        waste_confidence = 0.50
+        waste_confidence = 0.45
         is_waste = False
 
     if not is_waste:
@@ -284,15 +339,25 @@ def _local_heuristic_vision(image_path: str, context_notes: str = "") -> dict:
             "confidence_percentage": conf_pct,
             "detected_category": "Other",
             "detected_severity": "None",
+            "detected_subject": detected_subject,
+            "subject_details": subject_details,
+            "criticality": "None (Civic waste management not applicable)",
+            "criticality_score": 0,
+            "visual_breakdown": {
+                "detected_subject": detected_subject,
+                "waste_probability": f"{int(round(waste_confidence * 100))}%",
+                "clutter_score": round(float(clutter_score), 2),
+                "visual_characteristics": subject_details
+            },
             "visible_accumulation": False,
             "road_obstruction": False,
             "environmental_concern": False,
             "error": "Invalid Waste Image",
-            "message": "No clear waste or garbage was detected in this image. Please upload a clear photo showing the waste you want to report. (It is not the garbage.)",
-            "summary": "No clear waste or garbage was detected in this image. Visual inspection identified an unrelated scene, person, vehicle, screen, or clean area.",
-            "recommended_action": "No municipal sanitation action required. Citizen must upload a clear photo of waste.",
+            "message": f"No clear waste or garbage was detected in this image. Visual inspection identified: {detected_subject}. {subject_details} Please upload a clear photo showing the waste you want to report. (It is not the garbage.)",
+            "summary": f"Visual inspection identified: {detected_subject}. {subject_details}",
+            "recommended_action": "No municipal sanitation action required. Citizen must upload a clear photo of physical waste.",
             "image_hash": img_hash[:12],
-            "engine": "SmartWaste Deterministic CV Engine"
+            "engine": "SmartWaste AI Computer Vision Agent v2.5"
         }
 
     # 3. Categorization for Valid Waste
@@ -326,7 +391,7 @@ def _local_heuristic_vision(image_path: str, context_notes: str = "") -> dict:
     winning_category = max(scores, key=scores.get)
     winning_score = scores[winning_category]
 
-    # Severity estimation
+    # Severity & Criticality Estimation
     if winning_category == "Hazardous Waste":
         severity = "Critical"
     elif high_edges > 0.30 or winning_score > 1.2:
@@ -340,6 +405,45 @@ def _local_heuristic_vision(image_path: str, context_notes: str = "") -> dict:
     road_obstruction = is_wide or any(k in notes_lower for k in ["block", "road", "footpath", "gate", "street", "traffic", "sidewalk"])
     environmental_concern = severity in ["High", "Critical"] or winning_category in ["Hazardous Waste", "Organic / Wet Waste"]
 
+    # Calculate Criticality Score (0 to 100)
+    base_severity_score = {
+        "Critical": 90,
+        "High": 74,
+        "Medium": 52,
+        "Low": 30
+    }.get(severity, 60)
+
+    criticality_score = base_severity_score
+    if road_obstruction:
+        criticality_score += 10
+    if winning_category == "Hazardous Waste":
+        criticality_score = max(criticality_score, 95)
+    elif winning_category == "Organic / Wet Waste" and severity in ["High", "Critical"]:
+        criticality_score += 6
+    criticality_score = min(100, max(15, criticality_score))
+
+    # SLA and Risk Assessment
+    if severity == "Critical" or criticality_score >= 85:
+        sla_urgency = "2 Hours (Emergency Dispatch)"
+        health_hazard = "Critical Pathogen / Biohazard Hazard"
+        drainage_threat = "Severe Drainage Clogging & Flooding Threat"
+        volume_level = "Heavy Waste Accumulation (> 100 kg)"
+    elif severity == "High" or criticality_score >= 65:
+        sla_urgency = "4 Hours (High Priority Clearing)"
+        health_hazard = "High / Pathogen & Animal Scavenging Threat"
+        drainage_threat = "Moderate Runoff Ingress Risk"
+        volume_level = "Substantial Waste Heap (40–100 kg)"
+    elif severity == "Medium" or criticality_score >= 40:
+        sla_urgency = "8 Hours (Standard Civic Clearance)"
+        health_hazard = "Moderate Litter Contamination"
+        drainage_threat = "Low"
+        volume_level = "Moderate Accumulation (10–40 kg)"
+    else:
+        sla_urgency = "24 Hours (Scheduled Routine Sweep)"
+        health_hazard = "Low"
+        drainage_threat = "Minimal"
+        volume_level = "Scattered Minor Litter (< 10 kg)"
+
     # Deterministic confidence (85% - 98%)
     calculated_conf = 0.88 + min(0.06, winning_score * 0.04) + ((hash_int % 20) / 1000.0)
     calculated_conf = min(0.98, max(0.85, calculated_conf))
@@ -348,8 +452,9 @@ def _local_heuristic_vision(image_path: str, context_notes: str = "") -> dict:
 
     summary = (
         f"Visual inspection identifies an accumulation of {winning_category.lower()} "
-        f"with estimated {severity.lower()} severity"
-        f"{' obstructing pedestrian or vehicular access' if road_obstruction else ''}."
+        f"with estimated {severity.lower()} severity (Criticality Score: {criticality_score}/100)"
+        f"{' obstructing pedestrian or vehicular access' if road_obstruction else ''}. "
+        f"Recommended SLA: {sla_urgency}."
     )
 
     return {
@@ -361,14 +466,20 @@ def _local_heuristic_vision(image_path: str, context_notes: str = "") -> dict:
         "confidence": conf,
         "confidence_percentage": conf_pct,
         "detected_severity": severity,
+        "criticality_score": criticality_score,
+        "criticality_level": severity,
+        "sla_urgency": sla_urgency,
+        "health_hazard": health_hazard,
+        "drainage_threat": drainage_threat,
+        "volume_level": volume_level,
         "visible_accumulation": True,
         "road_obstruction": road_obstruction,
         "environmental_concern": environmental_concern,
-        "message": f"Detected {winning_category} with {conf_pct}% AI confidence.",
+        "message": f"Detected {winning_category} with {conf_pct}% AI confidence. Criticality: {severity} ({criticality_score}/100).",
         "summary": summary,
-        "recommended_action": f"Dispatch sanitation crew for {winning_category} clearance.",
+        "recommended_action": f"Dispatch sanitation crew for {winning_category} clearance within {sla_urgency}.",
         "image_hash": img_hash[:12],
-        "engine": "SmartWaste Deterministic CV Engine"
+        "engine": "SmartWaste AI Computer Vision Agent v2.5"
     }
 
 

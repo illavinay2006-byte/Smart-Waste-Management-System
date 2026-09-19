@@ -51,7 +51,13 @@ def analyze_image():
             "is_waste": False,
             "is_garbage": False,
             "error": "Invalid Waste Image",
-            "message": "No clear waste or garbage was detected in this image. Please upload a clear photo showing the waste you want to report."
+            "message": result.get("message") or "No clear waste or garbage was detected in this image. Please upload a clear photo showing the waste you want to report.",
+            "detected_subject": result.get("detected_subject", "Non-Waste Image"),
+            "subject_details": result.get("subject_details", "No civic waste accumulation was detected in this image."),
+            "criticality": "None",
+            "waste_probability": result.get("waste_confidence", 0.0),
+            "visual_breakdown": result.get("visual_breakdown", {}),
+            "analysis": result
         }), 422
 
     # Dynamic follow-up questions for Step 4 guided conversational flow

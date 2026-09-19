@@ -200,10 +200,12 @@ const API = {
     // 2. AI VISION INSPECTION & VALIDATION GATE
     if (path === "/ai/analyze-image" && method === "POST") {
       let imgSrc = parsedBody.image_url || "";
+      let fileName = "";
       if (parsedBody.image instanceof File) {
         imgSrc = URL.createObjectURL(parsedBody.image);
+        fileName = parsedBody.image.name || "";
       }
-      const notes = parsedBody.notes || "";
+      const notes = ((parsedBody.notes || "") + " " + fileName).trim();
       const analysis = await ClientEngine.analyzeWasteImage(imgSrc, notes);
 
       if (!analysis.is_waste) {

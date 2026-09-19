@@ -712,12 +712,16 @@ const CitizenPortal = {
 
         <!-- Clean Sample Evidence Picker -->
         <div class="mb-4">
-          <label class="form-label small fw-bold text-muted mb-1">Or test with realistic sample evidence:</label>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label small fw-bold text-muted mb-0">Select from test samples:</label>
+            <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0" style="font-size: 0.72rem;" onclick="CitizenPortal.openAiSettingsModal()">⚙️ AI Agent Settings</button>
+          </div>
           <div class="d-flex flex-wrap gap-2">
             <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('./uploads/sample_mixed_waste.jpg', 'Mixed Waste', 'High')">📦 Mixed Waste</button>
             <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('./uploads/sample_plastic.jpg', 'Plastic', 'Medium')">🥤 Plastic</button>
             <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('./uploads/sample_organic.jpg', 'Organic / Wet Waste', 'High')">🥬 Organic Dump</button>
             <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('./uploads/sample_ewaste.jpg', 'E-Waste', 'High')">💻 E-Waste</button>
+            <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.testPresentationImage()">📊 Test Presentation Slide (Non-Waste)</button>
           </div>
         </div>
 
@@ -761,61 +765,178 @@ const CitizenPortal = {
     }
   },
 
-  selectSample(url, category, severity) {
+  async selectSample(url, category, severity) {
     this.wizardData.imageUrl = url;
     this.wizardData.imageFile = null;
     this.wizardData.category = category;
     this.wizardData.severity = severity;
-    this.wizardData.imageValidated = true;
     const img = document.getElementById("image-preview");
     if (img) img.src = url;
     const fileInput = document.getElementById("file-input");
     if (fileInput) fileInput.value = "";
-    const statusEl = document.getElementById("image-validation-status");
-    if (statusEl) {
-      statusEl.style.display = "block";
-      statusEl.innerHTML = `
-        <div class="alert alert-success py-2 px-3 d-flex align-items-center justify-content-between mb-0 shadow-sm" style="border-radius: 8px;">
-          <div class="d-flex align-items-center gap-2">
-            <span class="fs-5">✓</span>
-            <span class="small fw-bold">Verified Waste Sample: ${category}</span>
-          </div>
-          <span class="badge bg-success">${severity}</span>
-        </div>
-      `;
-    }
+    await this.validateSelectedImage();
   },
 
-  showInvalidWasteImageModal(customMessage) {
+  async testPresentationImage() {
+    this.wizardData.imageUrl = "./uploads/sample_presentation.jpg";
+    this.wizardData.imageFile = null;
+    this.wizardData.imageValidated = false;
+    const img = document.getElementById("image-preview");
+    if (img) img.src = "./uploads/sample_presentation.jpg";
+    const fileInput = document.getElementById("file-input");
+    if (fileInput) fileInput.value = "";
+    await this.validateSelectedImage();
+  },
+
+  openAiSettingsModal() {
+    const oldModal = document.getElementById("sw-ai-settings-modal");
+    if (oldModal) oldModal.remove();
+
+    let currentKey = "";
+    try { currentKey = localStorage.getItem("sw_gemini_api_key") || ""; } catch (e) {}
+
+    const modalHtml = `
+      <div id="sw-ai-settings-modal" class="modal fade show" tabindex="-1" style="display: block; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 9999;" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
+          <div class="modal-content border-0 shadow-2xl rounded-4 overflow-hidden">
+            <div class="p-3 px-4 bg-light border-bottom d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-4">⚙️</span>
+                <h5 class="fw-bold mb-0">SmartWaste AI Agent Settings</h5>
+              </div>
+              <button type="button" class="btn-close" onclick="document.getElementById('sw-ai-settings-modal').remove()"></button>
+            </div>
+            <div class="p-4">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Active Vision Engine</label>
+                <div class="p-2 bg-light rounded-3 border small">
+                  <strong>🤖 SmartWaste AI Computer Vision Agent v2.5</strong>
+                  <p class="text-muted mb-0" style="font-size: 0.75rem;">Multi-band pixel analysis across RGB/HSV/YCbCr, spatial clutter entropy, presentation slide discrimination, and deterministic criticality scoring.</p>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Optional: Connect Google Gemini 1.5 Flash Vision</label>
+                <input type="password" id="gemini-api-key-input" class="form-control form-control-sm" placeholder="AIzaSy..." value="${currentKey}">
+                <small class="text-muted" style="font-size: 0.72rem;">Enter your Google Gemini API Key if you wish to run remote multi-modal vision directly. If left blank, the built-in local Computer Vision agent operates automatically.</small>
+              </div>
+              <div class="d-flex justify-content-end gap-2 pt-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('sw-ai-settings-modal').remove()">Cancel</button>
+                <button type="button" class="btn btn-success btn-sm fw-bold px-3" onclick="CitizenPortal.saveAiSettings()">Save Settings</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+  },
+
+  saveAiSettings() {
+    const input = document.getElementById("gemini-api-key-input");
+    const val = input ? input.value.trim() : "";
+    try {
+      if (val) {
+        localStorage.setItem("sw_gemini_api_key", val);
+        SWNotice.success("Google Gemini Vision API key connected!");
+      } else {
+        localStorage.removeItem("sw_gemini_api_key");
+        SWNotice.info("Switched to Built-in Local AI Computer Vision Agent.");
+      }
+    } catch (e) {}
+    const modal = document.getElementById("sw-ai-settings-modal");
+    if (modal) modal.remove();
+  },
+
+  showInvalidWasteImageModal(analysisData) {
     const oldModal = document.getElementById("invalid-waste-image-modal");
     if (oldModal) oldModal.remove();
 
-    const message = customMessage || "No clear waste or garbage was detected in this image. Please upload a clear photo showing the waste you want to report.";
+    const isObj = typeof analysisData === "object" && analysisData !== null;
+    const detectedSubject = (isObj && analysisData.detected_subject) ? analysisData.detected_subject : "Non-Waste Subject Detected";
+    const subjectDetails = (isObj && (analysisData.subject_details || analysisData.summary)) 
+      ? (analysisData.subject_details || analysisData.summary) 
+      : (typeof analysisData === "string" ? analysisData : "No clear waste or garbage was detected in this image.");
+    const wasteProb = (isObj && analysisData.waste_probability) ? analysisData.waste_probability : "0%";
+    const criticality = (isObj && analysisData.criticality) ? analysisData.criticality : "None (Civic waste management not applicable)";
+    const currentImg = this.wizardData.imageUrl || "./uploads/sample_presentation.jpg";
+    const engineName = (isObj && analysisData.engine) ? analysisData.engine : "SmartWaste AI Computer Vision Agent v2.5";
 
     const modalHtml = `
-      <div id="invalid-waste-image-modal" class="modal fade show" tabindex="-1" style="display: block; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 9999;" role="dialog" aria-modal="true" aria-labelledby="invalid-waste-modal-title">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px; margin: 1.75rem auto;">
+      <div id="invalid-waste-image-modal" class="modal fade show" tabindex="-1" style="display: block; background: rgba(15, 23, 42, 0.78); backdrop-filter: blur(5px); z-index: 9999;" role="dialog" aria-modal="true" aria-labelledby="invalid-waste-modal-title">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 620px; margin: 1.5rem auto;">
           <div class="modal-content border-0 shadow-2xl" style="border-radius: 20px; overflow: hidden; background: #ffffff;">
-            <div class="p-4 text-center border-bottom" style="background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);">
-              <div class="d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 72px; height: 72px; border-radius: 50%; background: #ffedd5; font-size: 2.2rem; border: 2px solid #fed7aa;">
-                ⚠️
+            <!-- Modal Header -->
+            <div class="p-3 px-4 d-flex align-items-center justify-content-between border-bottom" style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-4">🤖</span>
+                <div>
+                  <h5 class="fw-bold text-dark mb-0" id="invalid-waste-modal-title">SmartWaste AI Image Inspection</h5>
+                  <small class="text-muted" style="font-size: 0.75rem;">Engine: ${engineName}</small>
+                </div>
               </div>
-              <h4 class="fw-bold text-dark mb-1" id="invalid-waste-modal-title">⚠️ Invalid Waste Image</h4>
-              <span class="badge bg-danger bg-opacity-10 text-danger fw-semibold px-3 py-1 rounded-pill" style="font-size: 0.78rem;">
-                Image Validation Failed
+              <span class="badge bg-danger bg-opacity-15 text-danger border border-danger px-3 py-1 rounded-pill fw-bold" style="font-size: 0.76rem;">
+                ⚠️ Invalid Waste Image Gate
               </span>
             </div>
+
+            <!-- Modal Body -->
             <div class="p-4 bg-white">
-              <p class="text-secondary text-center mb-4" style="font-size: 1rem; line-height: 1.6;">
-                ${message}
-              </p>
-              <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 pt-2">
-                <button type="button" class="btn btn-outline-secondary fw-semibold px-4 py-2" style="border-radius: 10px;" onclick="CitizenPortal.closeInvalidWasteModal()">
-                  Cancel
+              <div class="row g-3 align-items-center mb-3">
+                <div class="col-12 col-md-5 text-center">
+                  <div class="position-relative p-1 rounded-3 border bg-light shadow-sm">
+                    <img src="${window.resolveImageUrl(currentImg)}" onerror="window.handleImageError(this)" class="img-fluid rounded-2" style="max-height: 190px; width: 100%; object-fit: contain; background: #fff;" alt="Inspected Evidence">
+                    <span class="position-absolute bottom-0 start-50 translate-middle-x mb-2 badge bg-dark bg-opacity-80 text-white shadow-sm" style="font-size: 0.72rem;">
+                      Inspected Photo
+                    </span>
+                  </div>
+                </div>
+                <div class="col-12 col-md-7">
+                  <div class="mb-2">
+                    <label class="text-muted small fw-bold d-block text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Identified Image Subject</label>
+                    <span class="badge bg-warning text-dark px-3 py-1 fs-6 fw-bold rounded-pill shadow-sm">
+                      ${detectedSubject}
+                    </span>
+                  </div>
+                  <div class="p-2 rounded-3 bg-light border mb-2">
+                    <label class="text-muted fw-bold d-block" style="font-size: 0.7rem;">AI Visual Findings & Details:</label>
+                    <p class="small text-secondary mb-0" style="line-height: 1.45;">${subjectDetails}</p>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-1 border-bottom small">
+                    <span class="text-muted">Waste Probability:</span>
+                    <strong class="text-danger">${wasteProb}</strong>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-1 border-bottom small">
+                    <span class="text-muted">Criticality Assessment:</span>
+                    <strong class="text-secondary">${criticality}</strong>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-1 small">
+                    <span class="text-muted">Validation Gate Verdict:</span>
+                    <strong class="text-danger">❌ Report Blocked</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Civic Guidance Alert -->
+              <div class="alert alert-warning py-2 px-3 small mb-0 rounded-3 d-flex align-items-start gap-2 shadow-sm" style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b;">
+                <span class="fs-5">ℹ️</span>
+                <div style="line-height: 1.45;">
+                  <strong>Civic Reporting Notice:</strong> SmartWaste AI validates images to prevent non-waste content (such as presentation slides, documents, portraits, or vehicles) from dispatching sanitation compactor trucks. Please upload a clear photo of physical garbage or litter to report.
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-3 px-4 bg-light border-top d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold px-3 py-2 rounded-3" onclick="CitizenPortal.closeInvalidWasteModal()">
+                Cancel
+              </button>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-success btn-sm fw-bold px-3 py-2 rounded-3" onclick="CitizenPortal.selectSample('./uploads/sample_plastic.jpg', 'Plastic', 'Medium'); CitizenPortal.closeInvalidWasteModal();">
+                  🧪 Try Sample Waste
                 </button>
-                <button type="button" class="btn btn-success fw-bold px-4 py-2 shadow-sm d-flex align-items-center justify-content-center gap-2" style="border-radius: 10px; background: #059669; border: none;" onclick="CitizenPortal.handleUploadAnotherImage()">
+                <button type="button" class="btn btn-success btn-sm fw-bold px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" style="background: #059669; border: none;" onclick="CitizenPortal.handleUploadAnotherImage()">
                   <span>📸</span>
-                  <span>Upload Another Image</span>
+                  <span>Upload Real Waste Photo</span>
                 </button>
               </div>
             </div>
@@ -895,7 +1016,7 @@ const CitizenPortal = {
 
       if (!analysis || analysis.is_waste === false || !analysis.is_garbage || analysis.detected_category === "Other" || analysis.detected_category === "Not Garbage / Clean Area") {
         this.resetInvalidImage();
-        this.showInvalidWasteImageModal(analysis?.message);
+        this.showInvalidWasteImageModal(analysis || { message: "No clear waste detected." });
         if (statusEl) statusEl.style.display = "none";
         if (continueBtn) continueBtn.disabled = false;
         return false;
@@ -908,14 +1029,27 @@ const CitizenPortal = {
       this.wizardData.road_obstruction = Boolean(analysis.road_obstruction);
       this.wizardData.imageValidated = true;
 
+      const critScore = analysis.criticality_score || (analysis.detected_severity === "Critical" ? 92 : (analysis.detected_severity === "High" ? 75 : 50));
+      const sla = analysis.sla_urgency || (analysis.detected_severity === "Critical" ? "2 Hours" : "4 Hours");
+      const sevBadge = analysis.detected_severity === "Critical" ? "bg-danger" : (analysis.detected_severity === "High" ? "bg-warning text-dark" : "bg-primary");
+
       if (statusEl) {
         statusEl.innerHTML = `
-          <div class="alert alert-success py-2 px-3 d-flex align-items-center justify-content-between mb-0 shadow-sm" style="border-radius: 8px;">
-            <div class="d-flex align-items-center gap-2">
-              <span class="fs-5">✓</span>
-              <span class="small fw-bold">Waste Verified: ${analysis.detected_category} (${analysis.confidence_percentage}% confidence)</span>
+          <div class="alert alert-success py-2 px-3 mb-0 shadow-sm" style="border-radius: 10px; background: #f0fdf4; border-color: #86efac;">
+            <div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-5 text-success">✓</span>
+                <span class="small fw-bold text-success">Waste Verified: ${analysis.detected_category} (${analysis.confidence_percentage}% AI Confidence)</span>
+              </div>
+              <span class="badge ${sevBadge} fw-bold">Criticality: ${analysis.detected_severity} (${critScore}/100)</span>
             </div>
-            <span class="badge bg-success">${analysis.detected_severity || 'High'}</span>
+            <div class="d-flex align-items-center gap-2 flex-wrap small text-muted pt-1 border-top" style="border-color: #dcfce7 !important; font-size: 0.78rem;">
+              <span>⏱️ SLA: <strong class="text-dark">${sla}</strong></span>
+              <span>•</span>
+              <span>🚨 Obstruction: <strong class="${analysis.road_obstruction ? 'text-danger' : 'text-success'}">${analysis.road_obstruction ? 'Yes (Roadway Blocked)' : 'Clear Access'}</strong></span>
+              <span>•</span>
+              <span>📦 Volume: <strong class="text-dark">${analysis.volume_level || 'Substantial Pile'}</strong></span>
+            </div>
           </div>
         `;
       }
@@ -923,8 +1057,12 @@ const CitizenPortal = {
       return true;
     } catch (err) {
       this.resetInvalidImage();
-      const msg = err.data?.message || err.message;
-      this.showInvalidWasteImageModal(msg);
+      const analysisData = err.data?.analysis || err.data || {
+        detected_subject: "Non-Waste Image",
+        subject_details: err.message,
+        message: err.message
+      };
+      this.showInvalidWasteImageModal(analysisData);
       if (statusEl) statusEl.style.display = "none";
       if (continueBtn) continueBtn.disabled = false;
       return false;
@@ -1207,7 +1345,7 @@ const CitizenPortal = {
 
       if (!aiResult || aiResult.is_waste === false || !aiResult.is_garbage || aiResult.detected_category === "Other" || aiResult.detected_category === "Not Garbage / Clean Area") {
         this.resetInvalidImage();
-        this.showInvalidWasteImageModal(aiResult?.message);
+        this.showInvalidWasteImageModal(aiResult || { message: "No clear waste detected." });
         this.activeStep = 1;
         this.renderWizardStep();
         return;
@@ -1219,62 +1357,102 @@ const CitizenPortal = {
       this.wizardData.road_obstruction = Boolean(aiResult.road_obstruction);
       this.wizardData.imageValidated = true;
 
+      const critScore = aiResult.criticality_score || (aiResult.detected_severity === "Critical" ? 92 : (aiResult.detected_severity === "High" ? 75 : 50));
+      const sla = aiResult.sla_urgency || (aiResult.detected_severity === "Critical" ? "2 Hours (Emergency Dispatch)" : "4 Hours (High Priority Clearing)");
+      const critClass = aiResult.detected_severity === "Critical" ? "danger" : (aiResult.detected_severity === "High" ? "warning" : "primary");
+
       content.innerHTML = `
         <div class="sw-card">
           <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2">
               <span class="fs-4">🤖</span>
               <div>
-                <h4 class="fw-bold mb-0">SmartWaste AI Inspection</h4>
-                <small class="text-muted">Engine: ${aiResult.engine || 'SmartWaste Deterministic CV Engine'}</small>
+                <h4 class="fw-bold mb-0">SmartWaste AI Inspection & Criticality Analysis</h4>
+                <small class="text-muted">Engine: ${aiResult.engine || 'SmartWaste AI Computer Vision Agent v2.5'}</small>
               </div>
             </div>
             ${aiResult.image_hash ? `<span class="badge bg-light text-muted border small">Hash: ${aiResult.image_hash}</span>` : ''}
           </div>
 
           <!-- GARBAGE DETECTED BANNER -->
-          <div class="alert alert-success border-success p-3 mb-3 shadow-sm rounded" style="background: #f0fdf4; border-color: #bbf7d0;">
-            <div class="d-flex align-items-center gap-3">
-              <span class="fs-2">🗑️</span>
-              <div>
-                <h5 class="fw-bold text-success mb-1">Waste Detected: ${aiResult.detected_category}</h5>
-                <p class="mb-0 text-dark small">${aiResult.message || `Detected ${aiResult.detected_category} with ${aiResult.confidence_percentage}% AI confidence.`}</p>
+          <div class="alert alert-success border-success p-3 mb-3 shadow-sm rounded-3" style="background: #f0fdf4; border-color: #86efac;">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+              <div class="d-flex align-items-center gap-3">
+                <span class="fs-2">🗑️</span>
+                <div>
+                  <h5 class="fw-bold text-success mb-1">Waste Confirmed: ${aiResult.detected_category}</h5>
+                  <p class="mb-0 text-dark small">${aiResult.message || `Detected ${aiResult.detected_category} with ${aiResult.confidence_percentage}% AI confidence.`}</p>
+                </div>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-${critClass} fs-6 px-3 py-2 fw-bold shadow-sm">
+                  Criticality: ${aiResult.detected_severity} (${critScore}/100)
+                </span>
               </div>
             </div>
           </div>
 
-          <!-- Image & Inspection Details Card -->
-          <div class="p-3 bg-light rounded mb-3 border">
+          <!-- Image & Criticality Inspection Grid -->
+          <div class="p-3 bg-light rounded-3 mb-3 border">
             <div class="row g-3 align-items-center">
               <div class="col-12 col-md-4 text-center">
-                <img src="${window.resolveImageUrl(this.wizardData.imageUrl)}" onerror="window.handleImageError(this)" class="rounded shadow-sm" style="max-height: 160px; max-width: 100%; object-fit: contain; background: #fff;" alt="Inspected Evidence">
+                <img src="${window.resolveImageUrl(this.wizardData.imageUrl)}" onerror="window.handleImageError(this)" class="rounded-3 shadow-sm" style="max-height: 180px; max-width: 100%; object-fit: contain; background: #fff;" alt="Inspected Evidence">
               </div>
               <div class="col-12 col-md-8">
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
                   <span class="small fw-bold text-muted">Detected Category:</span>
                   <span class="badge fs-6 bg-success">${aiResult.detected_category}</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                  <span class="small fw-bold text-muted">AI Confidence:</span>
+                  <span class="small fw-bold text-muted">AI Model Confidence:</span>
                   <span class="fw-bold text-success">${aiResult.confidence_percentage}%</span>
                 </div>
                 <div class="progress mb-2" style="height: 8px;">
                   <div class="progress-bar bg-success" style="width: ${aiResult.confidence_percentage}%;"></div>
                 </div>
+
+                <!-- Criticality Meter -->
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                  <span class="small text-muted">Estimated Severity:</span>
-                  <span class="badge-priority ${aiResult.detected_severity}">${aiResult.detected_severity}</span>
+                  <span class="small fw-bold text-muted">Waste Criticality Meter:</span>
+                  <span class="fw-bold text-${critClass}">${critScore}/100 • ${aiResult.detected_severity} Priority</span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center">
-                  <span class="small text-muted">Road Obstruction:</span>
-                  <span class="fw-bold ${aiResult.road_obstruction ? 'text-danger' : 'text-muted'}">${aiResult.road_obstruction ? '⚠️ Yes (Roadway Blocked)' : 'No Obstruction'}</span>
+                <div class="progress mb-3" style="height: 10px;">
+                  <div class="progress-bar bg-${critClass}" style="width: ${critScore}%;"></div>
+                </div>
+
+                <!-- 4-Factor Risk Matrix -->
+                <div class="row g-2 pt-1">
+                  <div class="col-6">
+                    <div class="p-2 bg-white rounded border small">
+                      <span class="text-muted d-block" style="font-size: 0.7rem;">🚨 ROADWAY IMPACT</span>
+                      <strong class="${aiResult.road_obstruction ? 'text-danger' : 'text-success'}">${aiResult.road_obstruction ? 'Blocked (High Risk)' : 'Clear Access'}</strong>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="p-2 bg-white rounded border small">
+                      <span class="text-muted d-block" style="font-size: 0.7rem;">⏱️ RESPONSE SLA</span>
+                      <strong class="text-dark">${sla}</strong>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="p-2 bg-white rounded border small">
+                      <span class="text-muted d-block" style="font-size: 0.7rem;">🦠 HEALTH / BIOHAZARD</span>
+                      <strong class="text-dark">${aiResult.health_hazard || 'Pathogen Hazard'}</strong>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="p-2 bg-white rounded border small">
+                      <span class="text-muted d-block" style="font-size: 0.7rem;">📦 ESTIMATED VOLUME</span>
+                      <strong class="text-dark">${aiResult.volume_level || 'Substantial Pile'}</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="alert alert-secondary py-2 small mb-3">
-            <strong>AI Observation:</strong> ${aiResult.summary}
+            <strong>AI Inspection Summary:</strong> ${aiResult.summary}
           </div>
 
           <!-- Edit options if user wishes to customize AI findings -->

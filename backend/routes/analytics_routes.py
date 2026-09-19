@@ -7,6 +7,8 @@ from backend.models.collection_point import CollectionPoint
 
 analytics_bp = Blueprint("analytics", __name__, url_prefix="/api/analytics")
 
+@analytics_bp.route("", methods=["GET"])
+@analytics_bp.route("/", methods=["GET"])
 @analytics_bp.route("/overview", methods=["GET"])
 def get_overview():
     total_reports = WasteReport.query.count()

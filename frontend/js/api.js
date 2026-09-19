@@ -624,6 +624,168 @@ const API = {
       return { message: "Test email dispatched successfully" };
     }
 
+    if ((path === "/analytics/overview" || path === "/analytics" || path.startsWith("/analytics/overview") || path.startsWith("/analytics?")) && method === "GET") {
+      const reports = ClientEngine.get("reports");
+      const users = ClientEngine.get("users");
+      const workers = users.filter(u => u.role === "worker");
+      const collectionPoints = ClientEngine.get("collection_points");
+
+      const total_reports = reports.length;
+      const submitted = reports.filter(r => r.status === "SUBMITTED").length;
+      const under_review = reports.filter(r => r.status === "UNDER_REVIEW").length;
+      const assigned = reports.filter(r => r.status === "ASSIGNED").length;
+      const in_progress = reports.filter(r => ["ACCEPTED", "IN_PROGRESS"].includes(r.status)).length;
+      const awaiting_verif = reports.filter(r => r.status === "AWAITING_VERIFICATION").length;
+      const completed = reports.filter(r => r.status === "COMPLETED").length;
+      const rejected = reports.filter(r => r.status === "REJECTED").length;
+      const recleaning = reports.filter(r => r.status === "RE_CLEANING_REQUIRED").length;
+
+      const busyWorkerIds = new Set(
+        reports
+          .filter(r => r.task && ["ASSIGNED", "ACCEPTED", "IN_PROGRESS", "RE_CLEANING_REQUIRED"].includes(r.task.status))
+          .map(r => r.task.worker_id)
+      );
+      const total_workers = workers.length;
+      const available_workers = Math.max(total_workers - busyWorkerIds.size, 0);
+
+      const emergency_reports = reports.filter(r => r.is_emergency).length;
+      const overflowing_points = collectionPoints.filter(p => (p.fill_level || 0) >= 80).length;
+
+      const categories = ["Organic / Wet Waste", "Plastic", "Paper", "Glass", "Metal", "E-Waste", "Hazardous Waste", "Mixed Waste", "Other"];
+      const category_counts = {};
+      categories.forEach(cat => {
+        const key = cat.split("/")[0].trim().toLowerCase();
+        category_counts[cat] = reports.filter(r => (r.category || "").toLowerCase().includes(key)).length;
+      });
+
+      const priority_counts = {
+        CRITICAL: reports.filter(r => r.priority === "CRITICAL").length,
+        HIGH: reports.filter(r => r.priority === "HIGH").length,
+        MEDIUM: reports.filter(r => r.priority === "MEDIUM").length,
+        LOW: reports.filter(r => r.priority === "LOW").length,
+      };
+
+      const status_counts = {
+        SUBMITTED: submitted,
+        UNDER_REVIEW: under_review,
+        ASSIGNED: assigned,
+        IN_PROGRESS: in_progress,
+        AWAITING_VERIFICATION: awaiting_verif,
+        RE_CLEANING_REQUIRED: recleaning,
+        COMPLETED: completed,
+        REJECTED: rejected
+      };
+
+      return {
+        metrics: {
+          total_reports,
+          open_reports: total_reports - completed - rejected,
+          in_progress,
+          awaiting_verification: awaiting_verif,
+          completed,
+          rejected,
+          emergency_reports,
+          available_workers,
+          total_workers,
+          overflowing_points,
+          avg_rating: 4.9
+        },
+        by_category: category_counts,
+        by_priority: priority_counts,
+        by_status: status_counts
+      };
+    }
+
+    if ((path.startsWith("/analytics/heatmap") || path.startsWith("/heatmap")) && method === "GET") {
+      const reports = ClientEngine.get("reports");
+      const points = reports.map(r => {
+        let weight = 1.0;
+        if (r.severity === "Critical" || r.is_emergency) weight = 2.5;
+        else if (r.severity === "High") weight = 1.8;
+        else if (r.severity === "Medium") weight = 1.2;
+
+        return {
+          id: r.id,
+          lat: r.latitude || 15.8246,
+          lng: r.longitude || 80.3522,
+          weight,
+          category: r.category,
+          severity: r.severity,
+          priority: r.priority,
+          status: r.status,
+          ward: r.ward || "Ward 1 - Chirala Clock Tower (Main Bazaar)",
+          is_emergency: !!r.is_emergency,
+          location_name: r.location_name
+        };
+      });
+
+      const wards = [
+        "Ward 1 - Chirala Clock Tower (Main Bazaar)",
+        "Ward 2 - Chirala Railway Station Road (Kothapeta)",
+        "Ward 3 - Chirala Handloom Weavers Colony (Perala)",
+        "Ward 4 - Chirala Municipality Office (Muntha Vari Thota)",
+        "Ward 5 - Chirala Vadarevu Beach Road (Fisherman Colony)",
+        "Ward 11 - Chirala Perala Market & Jandrapeta"
+      ];
+      const ward_stats = wards.map(w => {
+        const ct = reports.filter(r => (r.ward || "").includes(w.split("-")[0].trim())).length;
+        const crit = reports.filter(r => (r.ward || "").includes(w.split("-")[0].trim()) && (r.priority === "CRITICAL" || r.is_emergency)).length;
+        const compl = reports.filter(r => (r.ward || "").includes(w.split("-")[0].trim()) && r.status === "COMPLETED").length;
+        return {
+          ward: w,
+          total: ct,
+          critical: crit,
+          completed: compl,
+          pending: Math.max(ct - compl, 0)
+        };
+      });
+
+      return {
+        heatmap_points: points,
+        ward_stats
+      };
+    }
+
+    if ((path === "/analytics/workers-workload" || path === "/tasks/workload" || path === "/workers/workload") && method === "GET") {
+      const users = ClientEngine.get("users");
+      const workers = users.filter(u => u.role === "worker");
+      const reports = ClientEngine.get("reports");
+
+      const workload_list = workers.map(w => {
+        const activeTasks = reports.filter(r => 
+          r.task && r.task.worker_id === w.id && ["ASSIGNED", "ACCEPTED", "IN_PROGRESS", "RE_CLEANING_REQUIRED"].includes(r.task.status)
+        ).length;
+        const completedTasks = reports.filter(r =>
+          r.task && r.task.worker_id === w.id && r.status === "COMPLETED"
+        ).length;
+        const totalAssigned = activeTasks + completedTasks;
+        const maxCapacity = 5;
+        const capacityPct = Math.min(100, Math.round((activeTasks / maxCapacity) * 100));
+
+        let loadStatus = "Low";
+        if (activeTasks >= 5) loadStatus = "Full";
+        else if (activeTasks >= 3) loadStatus = "High";
+        else if (activeTasks >= 1) loadStatus = "Medium";
+
+        return {
+          worker_id: w.id,
+          name: w.name,
+          email: w.email,
+          phone: w.phone,
+          zone: w.zone || "Ward 1 - Chirala Clock Tower (Main Bazaar)",
+          latitude: w.latitude,
+          longitude: w.longitude,
+          active_tasks: activeTasks,
+          completed_tasks: completedTasks,
+          total_assigned: totalAssigned,
+          capacity_pct: capacityPct,
+          load_status: loadStatus
+        };
+      });
+
+      return { workers: workload_list };
+    }
+
     // Default fallback
     return {};
   },
@@ -681,12 +843,38 @@ const API = {
   deleteAnnouncement(id) { return this.request(`/announcements/${id}`, { method: "DELETE" }); },
 
   // Analytics & Heatmap
-  getAnalyticsOverview() { return this.request("/analytics/overview"); },
-  getHeatmapData() { return this.request("/analytics/heatmap"); },
+  getAnalytics(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return this.request(`/analytics/overview${query ? "?" + query : ""}`);
+  },
+  getAnalyticsOverview(params = {}) {
+    return this.getAnalytics(params);
+  },
+  getHeatmap(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return this.request(`/analytics/heatmap${query ? "?" + query : ""}`);
+  },
+  getHeatmapData(params = {}) {
+    return this.getHeatmap(params);
+  },
+  getWorkerWorkload() {
+    return this.request("/analytics/workers-workload");
+  },
+  getWorkersWorkload() {
+    return this.request("/analytics/workers-workload");
+  },
 
   // Collection Points & Route
   getCollectionPoints() { return this.request("/collection-points"); },
-  generateRoute(data) { return this.request("/collection-points/generate-route", { method: "POST", body: data }); },
+  generateRoute(depotLat, depotLng, vehicle) {
+    let payload = {};
+    if (typeof depotLat === "object" && depotLat !== null) {
+      payload = depotLat;
+    } else {
+      payload = { depot_lat: depotLat, depot_lng: depotLng, vehicle: vehicle || "tipper" };
+    }
+    return this.request("/collection-points/generate-route", { method: "POST", body: payload });
+  },
 
   // Email Audits & SMTP Configuration
   getEmails() { return this.request("/emails"); },

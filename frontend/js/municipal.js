@@ -19,12 +19,15 @@ const MunicipalConsole = {
     `;
 
     try {
+      const fetchAnalytics = (API.getAnalytics ? API.getAnalytics() : (API.getAnalyticsOverview ? API.getAnalyticsOverview() : Promise.resolve({})));
+      const fetchReports = (API.getReports ? API.getReports() : Promise.resolve({ reports: [] }));
+
       const [analyticsRes, reportsRes] = await Promise.all([
-        API.getAnalytics().catch(err => {
+        fetchAnalytics.catch(err => {
           console.error("Analytics fetch error:", err);
           return { metrics: {}, by_category: {}, by_priority: {}, by_status: {} };
         }),
-        API.getReports().catch(err => {
+        fetchReports.catch(err => {
           console.error("Reports fetch error:", err);
           return { reports: [] };
         })
@@ -784,7 +787,7 @@ const MunicipalConsole = {
     `;
 
     try {
-      const res = await API.getHeatmap();
+      const res = API.getHeatmap ? await API.getHeatmap() : (API.getHeatmapData ? await API.getHeatmapData() : {});
       const hotspots = res.heatmap_points || res.hotspots || [];
       const wardStatsList = res.ward_stats || (res.ward_summary ? Object.entries(res.ward_summary).map(([w, d]) => ({ ward: w, total: d.total, pending: d.open })) : []);
       const totalHotspots = hotspots.length;
@@ -926,7 +929,7 @@ const MunicipalConsole = {
     `;
 
     try {
-      const res = await API.getWorkerWorkload();
+      const res = API.getWorkerWorkload ? await API.getWorkerWorkload() : (API.getWorkersWorkload ? await API.getWorkersWorkload() : { workers: [] });
       const workers = res.workers || [];
       const target = document.getElementById("worker-workload-content");
 

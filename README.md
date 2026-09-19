@@ -85,6 +85,12 @@ python tests/test_api_workflow.py
 
 # Run Re-cleaning loop, Info-request, AI chat, and TSP Route test
 python tests/test_all_features.py
+
+# Run Haversine Worker Geographic Distance Calculation test
+python tests/test_distance_calculation.py
+
+# Run Strict Waste Image Validation Gate test (Non-waste rejection)
+python tests/test_waste_image_validation.py
 ```
 
 ---

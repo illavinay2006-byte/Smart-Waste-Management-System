@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartWaste — Chirala Municipal Corporation AI Waste Management</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans for crisp, modern civic-tech typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+  <!-- Custom Design System -->
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+
+  <!-- AUTHENTICATION GATEWAY SCREEN (Visible when unauthenticated) -->
+  <div id="auth-gateway-screen" style="display: none; min-height: 100vh; background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(6, 78, 59, 0.88) 50%, rgba(15, 23, 42, 0.95) 100%), url('/images/smart_city_bg.jpg') center/cover no-repeat fixed; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; position: relative;">
+    
+    <!-- Top Official State Header Ribbon -->
+    <div class="w-100 position-absolute top-0 start-0 py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2 text-white border-bottom border-white border-opacity-10" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 2; font-size: 0.78rem;">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-white text-dark fw-bold px-2 py-0.5" style="font-size: 0.68rem; letter-spacing: 0.5px;">GOVT. OF ANDHRA PRADESH</span>
+        <span class="text-white-50">|</span>
+        <span class="fw-semibold">చీరాల పురపాలక సంఘం • Chirala Municipality</span>
+        <span class="text-white-50 d-none d-md-inline">• Swachh Andhra Mission</span>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="d-none d-sm-inline">📞 Toll-Free Helpline: <strong>14420 / 1969</strong></span>
+        <span class="badge bg-success text-white px-2 py-0.5 rounded-pill d-flex align-items-center gap-1">
+          <span class="status-pulse-dot"></span> 12 Wards Connected
+        </span>
+      </div>
+    </div>
+
+    <!-- Main Dual-Panel Gateway Card Container -->
+    <div class="container my-auto pt-5" style="max-width: 1060px; z-index: 1;">
+      <div class="row g-4 align-items-center">
+        
+        <!-- Left Column: Civic Tech Hero Information -->
+        <div class="col-12 col-lg-6 text-white text-center text-lg-start">
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-3 border border-white border-opacity-20" style="background: rgba(255,255,255,0.08); backdrop-filter: blur(10px);">
+            <span class="status-pulse-dot"></span>
+            <small class="fw-bold tracking-wider text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.8px;">AI-Driven Municipal Redressal</small>
+          </div>
+
+          <h1 class="display-5 fw-bold mb-2" style="letter-spacing: -1px;">
+            SmartWaste <span style="background: linear-gradient(135deg, #34d399, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">AI</span>
+          </h1>
+          <p class="lead mb-4 text-white-50" style="font-size: 1.05rem; line-height: 1.6;">
+            Empowering citizens and municipal sanitation crews in Chirala with instant AI waste classification, geo-verified dispatch, and verified photographic resolution.
+          </p>
+
+          <!-- 3 Civic Highlights -->
+          <div class="row g-3 mb-4 text-start">
+            <div class="col-12 col-sm-6">
+              <div class="p-3 rounded-3 border border-white border-opacity-10 h-100" style="background: rgba(255,255,255,0.05); backdrop-filter: blur(8px);">
+                <div class="fs-4 mb-1">🤖</div>
+                <div class="fw-bold small text-white">Edge AI Inspection</div>
+                <div class="text-white-50 small" style="font-size: 0.76rem;">Instant multi-category classification & non-waste screening.</div>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <div class="p-3 rounded-3 border border-white border-opacity-10 h-100" style="background: rgba(255,255,255,0.05); backdrop-filter: blur(8px);">
+                <div class="fs-4 mb-1">📍</div>
+                <div class="fw-bold small text-white">12 Chirala Wards</div>
+                <div class="text-white-50 small" style="font-size: 0.76rem;">Geo-tagged routing to localized sanitation squads.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Test / Demo Persona Quick-Fill -->
+          <div class="p-3 rounded-3 border border-white border-opacity-15 text-start" style="background: rgba(255,255,255,0.07); backdrop-filter: blur(12px);">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="small fw-bold text-white text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">⚡ 1-Click Demo Profiles (Click to Load):</span>
+              <span class="badge bg-success bg-opacity-25 text-white border border-success border-opacity-30" style="font-size: 0.65rem;">Ready</span>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" class="btn btn-sm btn-outline-light rounded-pill py-1 px-3 d-flex align-items-center gap-1" style="font-size: 0.78rem;" onclick="App.fillGatewayLogin('citizen@demo.com', 'citizen123')" title="Citizen: Akash Kothagorla">
+                <span>👤</span> <strong>Citizen</strong> <span class="text-white-50">(Akash)</span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-light rounded-pill py-1 px-3 d-flex align-items-center gap-1" style="font-size: 0.78rem;" onclick="App.fillGatewayLogin('officer@demo.com', 'officer123')" title="Municipal Officer: Ramesh">
+                <span>🏢</span> <strong>Officer</strong> <span class="text-white-50">(Ramesh)</span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-light rounded-pill py-1 px-3 d-flex align-items-center gap-1" style="font-size: 0.78rem;" onclick="App.fillGatewayLogin('worker@demo.com', 'worker123')" title="Sanitation Worker: Ravi">
+                <span>👷</span> <strong>Worker</strong> <span class="text-white-50">(Ravi)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Registration & Login Form Card -->
+        <div class="col-12 col-lg-6">
+          <div class="sw-card shadow-lg p-0" style="border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.96); backdrop-filter: blur(24px) saturate(1.8); box-shadow: 0 30px 70px rgba(0,0,0,0.4);">
+            
+            <!-- Card Header -->
+            <div class="p-4 text-center text-white position-relative overflow-hidden" style="background: linear-gradient(135deg, #064e3b 0%, #059669 50%, #10b981 100%);">
+              <div style="position: absolute; inset: 0; background: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2760%27 height=%2760%27 viewBox=%270 0 60 60%27%3E%3Cg fill-rule=%27evenodd%27%3E%3Cg fill=%27%23ffffff%27 fill-opacity=%270.06%27%3E%3Cpath d=%27M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%27/%3E%3C/g%3E%3C/g%3E%3C/svg%3E'); pointer-events: none;"></div>
+              <div class="position-relative">
+                <div class="d-inline-flex align-items-center justify-content-center mb-2" style="width: 58px; height: 58px; background: rgba(255,255,255,0.2); border-radius: 16px; font-size: 2rem; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.25); box-shadow: 0 6px 18px rgba(0,0,0,0.15);">
+                  🌱
+                </div>
+                <h4 class="fw-bold mb-1" style="letter-spacing: -0.5px;">Chirala Municipal Portal</h4>
+                <p class="mb-0 opacity-90 small">Unified Civic Waste Redressal System</p>
+              </div>
+            </div>
+
+            <div class="p-4">
+              <!-- Auth Tabs -->
+              <ul class="nav nav-pills nav-fill mb-3 p-1 bg-light rounded-pill" id="gateway-auth-tabs">
+                <li class="nav-item">
+                  <button class="nav-link rounded-pill py-2 fw-bold active bg-success text-white" id="gateway-tab-reg-btn" onclick="App.switchGatewayTab('register')">
+                    1. Register
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link rounded-pill py-2 fw-bold text-secondary" id="gateway-tab-login-btn" onclick="App.switchGatewayTab('login')">
+                    2. Log In
+                  </button>
+                </li>
+              </ul>
+
+              <!-- Status Alert -->
+              <div id="gateway-status-alert"></div>
+
+              <!-- REGISTER FORM (Email, Password, Chirala Ward) -->
+              <div id="gateway-reg-pane">
+                <form onsubmit="App.handleGatewayRegister(event)">
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark mb-1">Email Address <span class="text-danger">*</span></label>
+                    <input type="email" id="gateway-reg-email" class="form-control" placeholder="e.g. citizen@gmail.com" required autocomplete="email">
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">Complaint status & cleanup dispatches are notified here.</div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark mb-1">Password <span class="text-danger">*</span></label>
+                    <input type="password" id="gateway-reg-password" class="form-control" placeholder="Create a password" required minlength="4" autocomplete="new-password">
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark mb-1">Chirala Municipal Ward & Locality <span class="text-danger">*</span></label>
+                    <select id="gateway-reg-zone" class="form-select form-select-sm" required>
+                      <option value="Ward 1 - Chirala Clock Tower (Gadiyara Sthambham & Main Bazaar)">Ward 1 - Chirala Clock Tower (Gadiyara Sthambham & Main Bazaar)</option>
+                      <option value="Ward 2 - Chirala Railway Station Road (Kothapeta)">Ward 2 - Chirala Railway Station Road (Kothapeta)</option>
+                      <option value="Ward 3 - Chirala Handloom Weavers Colony (Perala)">Ward 3 - Chirala Handloom Weavers Colony (Perala)</option>
+                      <option value="Ward 4 - Chirala Municipality Office (Muntha Vari Thota)">Ward 4 - Chirala Municipality Office (Muntha Vari Thota)</option>
+                      <option value="Ward 5 - Chirala Vadarevu Beach Road (Fisherman Colony)">Ward 5 - Chirala Vadarevu Beach Road (Fisherman Colony)</option>
+                      <option value="Ward 6 - Chirala RTC Bus Complex & Bypass Junction">Ward 6 - Chirala RTC Bus Complex & Bypass Junction</option>
+                      <option value="Ward 7 - Chirala Vetapalem Road (Ramapuram Beach Area)">Ward 7 - Chirala Vetapalem Road (Ramapuram Beach Area)</option>
+                      <option value="Ward 8 - Chirala Ipurupalem & Gandhi Nagar">Ward 8 - Chirala Ipurupalem & Gandhi Nagar</option>
+                      <option value="Ward 9 - Chirala Trunk Road & St. Mark High School Road">Ward 9 - Chirala Trunk Road & St. Mark High School Road</option>
+                      <option value="Ward 10 - Chirala Chennupati Nagar & Pandillapalli">Ward 10 - Chirala Chennupati Nagar & Pandillapalli</option>
+                      <option value="Ward 11 - Chirala Perala Market & Jandrapeta">Ward 11 - Chirala Perala Market & Jandrapeta</option>
+                      <option value="Ward 12 - Chirala Kothapeta & Kamma Vari Palem">Ward 12 - Chirala Kothapeta & Kamma Vari Palem</option>
+                    </select>
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">Your residence ward ensures auto-dispatch to your local sanitation officer.</div>
+                  </div>
+
+                  <button type="submit" id="gateway-reg-btn" class="btn btn-success w-100 fw-bold py-2 rounded-pill shadow" style="background: linear-gradient(135deg, #059669, #10b981); border: none; letter-spacing: 0.3px; font-size: 0.95rem; padding: 12px;">
+                    Create Citizen Account 🚀
+                  </button>
+                </form>
+
+                <div class="text-center mt-3">
+                  <small class="text-muted">Already registered? <a href="#" class="text-primary fw-bold text-decoration-none" onclick="App.switchGatewayTab('login'); return false;">Log In here →</a></small>
+                </div>
+              </div>
+
+              <!-- LOGIN FORM (Email & Password) -->
+              <div id="gateway-login-pane" style="display: none;">
+                <form onsubmit="App.handleGatewayLogin(event)">
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark mb-1">Email Address <span class="text-danger">*</span></label>
+                    <input type="email" id="gateway-login-email" class="form-control" placeholder="e.g. citizen@demo.com" required autocomplete="email">
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark mb-1">Password <span class="text-danger">*</span></label>
+                    <input type="password" id="gateway-login-password" class="form-control" placeholder="Enter password" required autocomplete="current-password">
+                  </div>
+
+                  <button type="submit" id="gateway-login-btn" class="btn btn-primary w-100 fw-bold py-2 rounded-pill shadow-sm" style="background: linear-gradient(135deg, #2563eb, #3b82f6); border: none; padding: 12px;">
+                    Sign In to Portal →
+                  </button>
+                </form>
+
+                <div class="text-center mt-3">
+                  <small class="text-muted">Need an account? <a href="#" class="text-success fw-bold text-decoration-none" onclick="App.switchGatewayTab('register'); return false;">Register with Email & Password →</a></small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APPLICATION LAYOUT (Visible only after authentication) -->
+  <div id="app-layout" style="display: none;">
+    
+    <!-- Top Official State Header Ribbon -->
+    <div class="civic-official-strip">
+      <div class="container-fluid px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-white text-dark fw-bold px-2 py-0.5" style="font-size: 0.68rem; letter-spacing: 0.5px;">GOVT. OF ANDHRA PRADESH</span>
+          <span class="text-white-50 d-none d-md-inline">|</span>
+          <span class="text-white fw-medium d-none d-md-inline" style="font-size: 0.75rem;">చీరాల పురపాలక సంఘం • Chirala Municipality</span>
+          <span class="text-white-50 d-none d-lg-inline" style="font-size: 0.75rem;">• Swachh Andhra Mission</span>
+        </div>
+        <div class="d-flex align-items-center gap-3" style="font-size: 0.75rem; color: rgba(255,255,255,0.9);">
+          <span class="d-none d-sm-inline">📞 Toll-Free Civic Helpline: <strong>14420 / 1969</strong></span>
+          <span class="badge bg-success bg-opacity-25 text-white border border-success border-opacity-50 px-2 py-0.5 rounded-pill d-flex align-items-center gap-1">
+            <span class="status-pulse-dot"></span> 12 Wards Online
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Navigation Header -->
+    <header class="app-header">
+      <a href="#" class="brand-wrap" onclick="App.routeRoleView(); return false;">
+        <div class="brand-icon">🌱</div>
+        <div class="brand-text">
+          <h1>SmartWaste</h1>
+          <p>Chirala Municipal Corporation • Civic Sanitation Command</p>
+        </div>
+      </a>
+
+      <!-- Rearranged Header Role Switcher Pills -->
+      <div class="header-role-switcher d-none d-lg-flex align-items-center bg-light p-1 rounded-pill border gap-1">
+        <button class="btn btn-xs rounded-pill px-3 py-1 fw-bold header-role-btn active" data-role="citizen" onclick="App.switchRole('citizen')">
+          👤 Citizen
+        </button>
+        <button class="btn btn-xs rounded-pill px-3 py-1 fw-bold header-role-btn text-muted" data-role="officer" onclick="App.switchRole('officer')">
+          🏢 Officer
+        </button>
+        <button class="btn btn-xs rounded-pill px-3 py-1 fw-bold header-role-btn text-muted" data-role="worker" onclick="App.switchRole('worker')">
+          👷 Worker
+        </button>
+      </div>
+
+      <!-- Right Controls -->
+      <div class="d-flex align-items-center gap-3">
+        <!-- Waste Segregation Guide Button -->
+        <button class="btn btn-outline-success btn-sm rounded-pill d-flex align-items-center gap-1 px-3 py-1 shadow-sm" onclick="WasteEducation.showModal()" title="Waste Segregation & Sustainability Guide">
+          <span>♻️</span>
+          <span class="fw-bold d-none d-lg-inline">Segregation Guide</span>
+        </button>
+
+        <!-- AI Assistant Button -->
+        <button class="btn btn-outline-success btn-sm rounded-pill d-flex align-items-center gap-1 px-3 py-1 shadow-sm" onclick="AIChatAssistant.toggleChat()">
+          <span>🤖</span>
+          <span class="fw-bold d-none d-sm-inline">SmartWaste AI</span>
+        </button>
+
+        <!-- Notifications Bell -->
+        <div class="position-relative" style="cursor: pointer;" onclick="App.openNotificationsModal()">
+          <button type="button" class="btn btn-light rounded-circle border p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;" onclick="event.stopPropagation(); App.openNotificationsModal()">
+            🔔
+          </button>
+          <span id="notif-badge-count" class="notif-badge" style="display: none;">0</span>
+        </div>
+
+        <!-- User Profile Badge & Logout -->
+        <div class="d-flex align-items-center gap-2 ps-2 border-start">
+          <div class="d-flex align-items-center gap-2" style="cursor: pointer;" onclick="App.openAuthModal('login')" title="Click to Switch Account">
+            <img id="header-user-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80" alt="Avatar" class="rounded-circle border" style="width: 34px; height: 34px; object-fit: cover;">
+            <div class="d-none d-md-block text-start" style="line-height: 1.1;">
+              <div id="header-user-name" class="fw-bold small text-truncate" style="max-width: 140px;">Citizen</div>
+              <small id="header-user-role" class="badge bg-secondary" style="font-size: 0.65rem;">CITIZEN</small>
+            </div>
+          </div>
+          <button class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1 ms-1" onclick="App.logout()" title="Log out and return to registration screen" style="font-size: 0.75rem;">
+            ⏻ Log Out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main View Dynamic Container -->
+    <main class="main-container">
+      <div id="main-view">
+        <!-- Injected by role controller -->
+      </div>
+    </main>
+
+    <!-- Official Municipal Footer -->
+    <footer class="app-civic-footer mt-5 border-top bg-white">
+      <div class="main-container py-4">
+        <div class="row g-4 align-items-center">
+          <div class="col-12 col-md-6 text-center text-md-start">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-md-start mb-1">
+              <span class="fs-4">🏛️</span>
+              <strong class="text-dark" style="font-size: 0.95rem;">Chirala Municipal Corporation • చీరాల పురపాలక సంఘం</strong>
+            </div>
+            <p class="small text-muted mb-0">
+              Department of Municipal Administration & Urban Development (MA&UD), Govt. of Andhra Pradesh.<br>
+              Swachh Andhra Mission • SmartWaste AI Redressal Platform v2.4
+            </p>
+          </div>
+          <div class="col-12 col-md-6 text-center text-md-end">
+            <div class="d-flex gap-3 justify-content-center justify-content-md-end flex-wrap small text-muted mb-2">
+              <span>📞 Helpline: <strong>14420 / 1969</strong></span>
+              <span>•</span>
+              <span>🚨 Sanitation Emergency: <strong>112</strong></span>
+              <span>•</span>
+              <span>📍 Coordinates: <strong>15.8246°N, 80.3522°E</strong></span>
+            </div>
+            <div class="d-flex gap-2 justify-content-center justify-content-md-end align-items-center">
+              <span class="badge bg-success bg-opacity-10 text-success fw-bold px-2 py-1 rounded-pill" style="font-size: 0.72rem;">
+                🟢 All 12 Wards Operational
+              </span>
+              <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2 py-1 rounded-pill" style="font-size: 0.72rem;">
+                🤖 Computer Vision Edge Engine Active
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Modals & Drawers Container -->
+  <div id="modal-container"></div>
+
+  <!-- Bootstrap Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Application Scripts -->
+  <script src="/js/notice.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/map.js"></script>
+  <script src="/js/education.js"></script>
+  <script src="/js/ai_chat.js"></script>
+  <script src="/js/citizen.js"></script>
+  <script src="/js/municipal.js"></script>
+  <script src="/js/worker.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

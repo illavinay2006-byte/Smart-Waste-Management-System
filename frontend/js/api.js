@@ -371,30 +371,86 @@ const API = {
       const reportId = path.split("/").pop();
       const reports = ClientEngine.get("reports");
       const r = reports.find(x => x.id === reportId);
-      const repLat = r ? r.latitude : 15.8246;
-      const repLng = r ? r.longitude : 80.3522;
+      const repLat = (r && r.latitude) ? parseFloat(r.latitude) : 15.8246;
+      const repLng = (r && r.longitude) ? parseFloat(r.longitude) : 80.3522;
 
       const users = ClientEngine.get("users");
       const workers = users.filter(u => u.role === "worker");
 
+      const workerDefaults = {
+        3: { lat: 15.8252, lng: 80.3530, zone: "Ward 1 - Chirala Clock Tower (Main Bazaar)" },
+        4: { lat: 15.8180, lng: 80.3620, zone: "Ward 3 - Chirala Handloom Weavers Colony (Perala)" },
+        5: { lat: 15.8320, lng: 80.3450, zone: "Ward 5 - Chirala Vadarevu Beach Road (Fisherman Colony)" },
+        6: { lat: 15.8210, lng: 80.3560, zone: "Ward 2 - Chirala Railway Station Road (Kothapeta)" }
+      };
+
+      // Count active tasks for every worker
+      const activeTasksMap = {};
+      reports.forEach(rep => {
+        if (rep.task && ["ASSIGNED", "ACCEPTED", "IN_PROGRESS", "RE_CLEANING_REQUIRED"].includes(rep.task.status)) {
+          const wid = rep.task.worker_id;
+          activeTasksMap[wid] = (activeTasksMap[wid] || 0) + 1;
+        }
+      });
+
       const recommended = workers.map(w => {
-        const d = ClientEngine.calculateHaversineDistance(repLat, repLng, w.latitude, w.longitude);
-        const distanceStr = (d !== null) ? `${d} km away` : "Location unavailable";
+        const wLat = w.latitude || workerDefaults[w.id]?.lat;
+        const wLng = w.longitude || workerDefaults[w.id]?.lng;
+        const d = ClientEngine.calculateHaversineDistance(repLat, repLng, wLat, wLng);
+        const distKm = (d !== null) ? d : (workerDefaults[w.id] ? ClientEngine.calculateHaversineDistance(repLat, repLng, workerDefaults[w.id].lat, workerDefaults[w.id].lng) : null);
+        const activeCount = activeTasksMap[w.id] || 0;
+        
+        const wZone = w.zone || workerDefaults[w.id]?.zone || "Chirala Municipality";
+        const isSameZone = r && ((r.location_name && r.location_name.toLowerCase().includes(wZone.split("-")[0].trim().toLowerCase())) || 
+                                (r.ward && r.ward.toLowerCase().includes(wZone.split("-")[0].trim().toLowerCase())));
+
+        const statusLabel = activeCount === 0 ? "Available" : (activeCount >= 3 ? "Busy" : "Active");
+
+        const reasons = [];
+        if (activeCount === 0) {
+          reasons.push("Currently available (0 active tasks)");
+        } else {
+          reasons.push(`${activeCount} active task(s)`);
+        }
+
+        if (isSameZone) {
+          reasons.push("Assigned to matching municipal zone");
+        }
+
+        if (distKm !== null && distKm !== undefined) {
+          reasons.push(`Approx. ${distKm} km from task location`);
+        } else {
+          reasons.push("Location unavailable");
+        }
+
+        let score = 100 - (activeCount * 25);
+        if (isSameZone) score += 20;
+        if (distKm !== null && distKm !== undefined) score -= Math.round(distKm * 5);
+        else score -= 15;
+
         return {
+          worker_id: w.id,
           id: w.id,
           name: w.name,
           phone: w.phone,
-          zone: w.zone,
-          active_tasks_count: (w.id === 3) ? 1 : 0,
-          current_shift_status: "ON_DUTY",
-          distance_meters: (d !== null) ? Math.round(d * 1000) : 1500,
-          distance_km_str: distanceStr
+          email: w.email,
+          zone: wZone,
+          latitude: wLat,
+          longitude: wLng,
+          active_tasks: activeCount,
+          active_tasks_count: activeCount,
+          status: statusLabel,
+          distance_km: distKm,
+          distance_km_str: (distKm !== null && distKm !== undefined) ? `${distKm} km` : "Location unavailable",
+          distance_meters: (distKm !== null && distKm !== undefined) ? Math.round(distKm * 1000) : 1500,
+          recommendation_score: Math.max(score, 10),
+          reason: reasons.join(" • ")
         };
       });
 
-      // Sort by proximity
-      recommended.sort((a, b) => a.distance_meters - b.distance_meters);
-      return { recommended_workers: recommended };
+      // Sort by recommendation score descending (highest priority first)
+      recommended.sort((a, b) => b.recommendation_score - a.recommendation_score);
+      return { report_id: reportId, recommended_workers: recommended };
     }
 
     if (path === "/tasks/assign" && method === "POST") {

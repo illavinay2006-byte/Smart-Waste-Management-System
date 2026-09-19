@@ -128,9 +128,61 @@ const ClientEngine = {
     }
   },
 
+  // Helper to ensure all workers in localStorage have valid coordinates and zones
+  migrateWorkerData() {
+    try {
+      const usersRaw = localStorage.getItem("sw_users");
+      if (!usersRaw) return;
+      const users = JSON.parse(usersRaw);
+      const workerDefaults = {
+        3: { latitude: 15.8252, longitude: 80.3530, zone: "Ward 1 - Chirala Clock Tower (Main Bazaar)" },
+        4: { latitude: 15.8180, longitude: 80.3620, zone: "Ward 3 - Chirala Handloom Weavers Colony (Perala)" },
+        5: { latitude: 15.8320, longitude: 80.3450, zone: "Ward 5 - Chirala Vadarevu Beach Road (Fisherman Colony)" },
+        6: { latitude: 15.8210, longitude: 80.3560, zone: "Ward 2 - Chirala Railway Station Road (Kothapeta)" }
+      };
+      let changed = false;
+      users.forEach(u => {
+        if (u.role === "worker" && workerDefaults[u.id]) {
+          if (!u.latitude || !u.longitude) {
+            u.latitude = workerDefaults[u.id].latitude;
+            u.longitude = workerDefaults[u.id].longitude;
+            changed = true;
+          }
+          if (!u.zone) {
+            u.zone = workerDefaults[u.id].zone;
+            changed = true;
+          }
+        }
+      });
+      if (!users.some(u => u.id === 6)) {
+        users.push({
+          id: 6,
+          name: "Suresh",
+          email: "suresh.worker@demo.com",
+          role: "worker",
+          phone: "+91 98765 66778",
+          zone: "Ward 2 - Chirala Railway Station Road (Kothapeta)",
+          latitude: 15.8210,
+          longitude: 80.3560,
+          avatar_url: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&q=80",
+          points: 150,
+          rank_tier: "Sanitation Squad",
+          badges: []
+        });
+        changed = true;
+      }
+      if (changed) {
+        localStorage.setItem("sw_users", JSON.stringify(users));
+      }
+    } catch (e) {
+      console.warn("Migration of worker data skipped:", e);
+    }
+  },
+
   // Initialize Default Database in localStorage
   initDB() {
     this.migrateReportImageUrls();
+    this.migrateWorkerData();
     if (localStorage.getItem("sw_db_initialized_v2")) {
       this.initialized = true;
       return;
@@ -209,9 +261,9 @@ const ClientEngine = {
         email: "suresh.worker@demo.com",
         role: "worker",
         phone: "+91 98765 66778",
-        zone: "Ward 8 - Chirala Ipurupalem & Gandhi Nagar",
-        latitude: 15.8120,
-        longitude: 80.3410,
+        zone: "Ward 2 - Chirala Railway Station Road (Kothapeta)",
+        latitude: 15.8210,
+        longitude: 80.3560,
         avatar_url: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&q=80",
         points: 150,
         rank_tier: "Sanitation Squad",

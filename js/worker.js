@@ -68,7 +68,7 @@ const WorkerPortal = {
                     <div class="d-flex justify-content-between align-items-start mb-2">
                       <div>
                         <span class="badge-priority ${rep.priority || 'MEDIUM'}">${rep.priority || 'MEDIUM'}</span>
-                        <span class="badge-status badge-${rep.status || t.status} ms-1">${(rep.status || t.status).replace(/_/g, ' ')}</span>
+                        <span class="badge-status badge-${rep.status || t.status || 'ASSIGNED'} ms-1">${(rep.status || t.status || 'ASSIGNED').replace(/_/g, ' ')}</span>
                       </div>
                       <strong class="text-primary">${rep.id || ('Task #' + t.id)}</strong>
                     </div>

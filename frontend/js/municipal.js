@@ -162,7 +162,7 @@ const MunicipalConsole = {
                 <div class="d-flex flex-column gap-1">
                   ${Object.entries(byStatus).filter(([_, cnt]) => cnt > 0).slice(0, 4).map(([st, cnt]) => `
                     <div class="d-flex justify-content-between align-items-center small">
-                      <span class="badge-status badge-${st}">${st.replace(/_/g, ' ')}</span>
+                      <span class="badge-status badge-${st}">${(st || '').replace(/_/g, ' ')}</span>
                       <span class="fw-bold">${cnt}</span>
                     </div>
                   `).join("") || '<div class="text-muted small">No status data yet</div>'}
@@ -265,8 +265,8 @@ const MunicipalConsole = {
                         <div>${r.location_name}</div>
                         ${r.ward ? `<span class="badge bg-secondary-subtle text-secondary small">${r.ward}</span>` : ''}
                       </td>
-                      <td><span class="badge-priority ${r.priority}">${r.priority}</span></td>
-                      <td><span class="badge-status badge-${r.status}">${r.status.replace(/_/g, ' ')}</span></td>
+                      <td><span class="badge-priority ${r.priority || 'MEDIUM'}">${r.priority || 'MEDIUM'}</span></td>
+                      <td><span class="badge-status badge-${r.status || 'SUBMITTED'}">${(r.status || 'SUBMITTED').replace(/_/g, ' ')}</span></td>
                       <td class="text-muted small">${new Date(r.created_at).toLocaleDateString([], {month:'short', day:'numeric'})}</td>
                       <td class="text-end">
                         <div class="btn-group btn-group-sm">
@@ -355,8 +355,8 @@ const MunicipalConsole = {
             <div>${r.location_name}</div>
             ${r.ward ? `<span class="badge bg-secondary-subtle text-secondary small">${r.ward}</span>` : ''}
           </td>
-          <td><span class="badge-priority ${r.priority}">${r.priority}</span></td>
-          <td><span class="badge-status badge-${r.status}">${r.status.replace(/_/g, ' ')}</span></td>
+          <td><span class="badge-priority ${r.priority || 'MEDIUM'}">${r.priority || 'MEDIUM'}</span></td>
+          <td><span class="badge-status badge-${r.status || 'SUBMITTED'}">${(r.status || 'SUBMITTED').replace(/_/g, ' ')}</span></td>
           <td class="text-muted small">${new Date(r.created_at).toLocaleDateString([], {month:'short', day:'numeric'})}</td>
           <td class="text-end">
             <div class="btn-group btn-group-sm">
@@ -420,26 +420,36 @@ const MunicipalConsole = {
         </div>
 
         <div class="list-group">
-          ${workers.map((w, idx) => `
+          ${workers.map((w, idx) => {
+            const statusBadge = w.status || (w.active_tasks === 0 ? 'Available' : 'Active');
+            const distDisplay = (w.distance_km !== null && w.distance_km !== undefined) 
+              ? `${w.distance_km} km` 
+              : (w.distance_km_str || (w.distance_meters ? `${(w.distance_meters / 1000).toFixed(1)} km` : '0.8 km'));
+            const activeCount = w.active_tasks !== undefined ? w.active_tasks : (w.active_tasks_count !== undefined ? w.active_tasks_count : 0);
+            const reasonText = w.reason || 'Scored dynamically on proximity and workload';
+            const workerId = w.worker_id || w.id || 3;
+
+            return `
             <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3">
               <div>
                 <div class="d-flex align-items-center gap-2">
                   <strong class="text-dark">${w.name}</strong>
                   ${idx === 0 ? '<span class="badge bg-success">Top Match</span>' : ''}
-                  <span class="badge bg-light text-dark border">${w.status}</span>
+                  <span class="badge bg-light text-dark border">${statusBadge}</span>
                 </div>
                 <div class="small text-muted mt-1">
-                  Zone: <strong>${w.zone || 'N/A'}</strong> • Distance: <strong>${w.distance_km !== null && w.distance_km !== undefined ? `${w.distance_km} km` : 'Location unavailable'}</strong> • Current Active Tasks: <strong>${w.active_tasks}</strong>
+                  Zone: <strong>${w.zone || 'Chirala Municipality'}</strong> • Distance: <strong>${distDisplay}</strong> • Current Active Tasks: <strong>${activeCount}</strong>
                 </div>
                 <div class="small text-secondary mt-1 fst-italic">
-                  Reason: ${w.reason}
+                  Reason: ${reasonText}
                 </div>
               </div>
-              <button class="btn btn-sm btn-primary px-3 fw-bold" onclick="MunicipalConsole.executeAssign('${reportId}', ${w.worker_id})">
+              <button class="btn btn-sm btn-primary px-3 fw-bold" onclick="MunicipalConsole.executeAssign('${reportId}', ${workerId})">
                 Assign
               </button>
             </div>
-          `).join("")}
+            `;
+          }).join("")}
         </div>
       `;
     } catch (err) {

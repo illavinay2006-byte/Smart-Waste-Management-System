@@ -231,8 +231,8 @@ const CitizenPortal = {
                   <div>
                     <div class="d-flex justify-content-between align-items-start mb-2">
                       <div>
-                        <span class="badge-status badge-${r.status}">${r.status.replace(/_/g, ' ')}</span>
-                        <span class="badge-priority ${r.priority} ms-1">${r.priority}</span>
+                        <span class="badge-status badge-${r.status || 'SUBMITTED'}">${(r.status || 'SUBMITTED').replace(/_/g, ' ')}</span>
+                        <span class="badge-priority ${r.priority || 'MEDIUM'} ms-1">${r.priority || 'MEDIUM'}</span>
                       </div>
                       <small class="text-muted">${r.id}</small>
                     </div>
@@ -417,7 +417,7 @@ const CitizenPortal = {
               marker.bindPopup(`
                 <div style="font-family: sans-serif; min-width: 180px;">
                   <div style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">${r.id}</div>
-                  <div style="font-size: 12px; color: ${color}; font-weight: 600; margin-bottom: 4px;">${r.status.replace(/_/g, ' ')} ${r.is_emergency ? '🚨' : ''}</div>
+                  <div style="font-size: 12px; color: ${color}; font-weight: 600; margin-bottom: 4px;">${(r.status || 'SUBMITTED').replace(/_/g, ' ')} ${r.is_emergency ? '🚨' : ''}</div>
                   <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">${r.category} • ${r.location_name}</div>
                   <button onclick="CitizenPortal.viewReportDetail('${r.id}')" style="background: #0d9488; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; width: 100%;">View Details →</button>
                 </div>
@@ -1113,12 +1113,15 @@ const CitizenPortal = {
       return;
     }
 
-    resultsContainer.innerHTML = results.map((item, idx) => `
-      <button type="button" class="list-group-item list-group-item-action py-2 text-start small" onclick="CitizenPortal.selectSearchResult(${item.lat}, ${item.lng}, '${item.displayName.replace(/'/g, "\\'")}')">
-        <strong>📍 ${item.displayName.split(',')[0]}</strong><br>
-        <span class="text-muted" style="font-size: 0.75rem;">${item.displayName}</span>
+    resultsContainer.innerHTML = results.map((item, idx) => {
+      const name = item.displayName || item.name || "Selected Location";
+      return `
+      <button type="button" class="list-group-item list-group-item-action py-2 text-start small" onclick="CitizenPortal.selectSearchResult(${item.lat}, ${item.lng}, '${name.replace(/'/g, "\\'")}')">
+        <strong>📍 ${name.split(',')[0]}</strong><br>
+        <span class="text-muted" style="font-size: 0.75rem;">${name}</span>
       </button>
-    `).join("");
+      `;
+    }).join("");
   },
 
   selectSearchResult(lat, lng, fullName) {
@@ -1591,8 +1594,8 @@ const CitizenPortal = {
               <button class="btn btn-sm btn-outline-dark fw-bold" onclick="window.open('/api/reports/${rep.id}/pdf', '_blank')">
                 📄 Print / Download Dossier
               </button>
-              <span class="badge-status badge-${rep.status}">${rep.status.replace(/_/g, ' ')}</span>
-              <span class="badge-priority ${rep.priority}">${rep.priority}</span>
+              <span class="badge-status badge-${rep.status || 'SUBMITTED'}">${(rep.status || 'SUBMITTED').replace(/_/g, ' ')}</span>
+              <span class="badge-priority ${rep.priority || 'MEDIUM'}">${rep.priority || 'MEDIUM'}</span>
               ${rep.is_emergency ? '<span class="badge bg-danger">🚨 EMERGENCY</span>' : ''}
             </div>
           </div>
@@ -1713,13 +1716,18 @@ const CitizenPortal = {
               <div class="sw-card h-100">
                 <h5 class="fw-bold mb-3">Action History Timeline</h5>
                 <div class="timeline">
-                  ${(rep.history || []).map((h, i) => `
+                  ${(rep.history || []).map((h, i) => {
+                    const statusText = (h.new_status || h.status || 'STATUS UPDATE').replace(/_/g, ' ');
+                    const timeText = h.formatted_time || (h.timestamp ? new Date(h.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : 'Recently');
+                    const noteText = h.notes || h.comment || (h.changed_by ? `Action by ${h.changed_by}` : '');
+                    return `
                     <div class="timeline-item ${i === rep.history.length - 1 ? 'active' : ''}">
-                      <div class="timeline-time">${h.formatted_time || h.timestamp}</div>
-                      <div class="timeline-title">${h.new_status.replace(/_/g, ' ')}</div>
-                      <div class="timeline-comment">${h.comment || ''}</div>
+                      <div class="timeline-time">${timeText}</div>
+                      <div class="timeline-title">${statusText}</div>
+                      <div class="timeline-comment">${noteText}</div>
                     </div>
-                  `).join("")}
+                    `;
+                  }).join("")}
                 </div>
               </div>
             </div>

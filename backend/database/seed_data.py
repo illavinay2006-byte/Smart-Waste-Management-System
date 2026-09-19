@@ -123,8 +123,8 @@ def seed_database(app):
             role="worker",
             phone="+91 98765 99001",
             zone="Ward 2 - Chirala Railway Station Road (Kothapeta)",
-            latitude=None,
-            longitude=None,
+            latitude=15.8210,
+            longitude=80.3560,
             avatar_url="https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=120&q=80"
         )
         worker4.set_password("demo123")

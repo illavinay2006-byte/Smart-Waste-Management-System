@@ -4,6 +4,13 @@ const WorkerPortal = {
     this.renderTasks();
   },
 
+  formatAssignedDate(dt) {
+    if (!dt) return "Recently";
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return "Recently";
+    return `${d.toLocaleDateString([], {day: 'numeric', month: 'short'})}, ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+  },
+
   async renderTasks() {
     const container = document.getElementById("main-view");
     container.innerHTML = `
@@ -93,7 +100,7 @@ const WorkerPortal = {
 
                     <!-- Worker State Actions -->
                     <div class="pt-2 mt-2 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
-                      <small class="text-muted">Assigned: ${new Date(t.assigned_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
+                      <small class="text-muted">Assigned: ${WorkerPortal.formatAssignedDate(t.assigned_at || rep.updated_at || rep.created_at)}</small>
 
                       <div class="d-flex gap-2">
                         ${t.status === "ASSIGNED" || rep.status === "ASSIGNED" ? `

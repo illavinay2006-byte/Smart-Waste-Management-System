@@ -14,10 +14,11 @@ const App = {
 
     try {
       const authRes = await API.getCurrentUser();
-      if (authRes.authenticated && authRes.user) {
+      const hasActiveSession = typeof sessionStorage !== "undefined" && sessionStorage.getItem("sw_user_logged_in") === "true";
+      if (authRes.authenticated && authRes.user && hasActiveSession) {
         this.showAppInterface(authRes.user);
       } else {
-        // Show centered authentication gateway screen
+        // Website starts from login page or registration page
         this.showGatewayScreen();
       }
     } catch (err) {
@@ -46,8 +47,9 @@ const App = {
     if (gateway) gateway.style.display = "flex";
     if (appLayout) appLayout.style.display = "none";
 
+    this.switchGatewayTab("login");
+
     if (warningMessage) {
-      this.switchGatewayTab("login");
       const alertEl = document.getElementById("gateway-status-alert");
       if (alertEl) {
         alertEl.innerHTML = `
@@ -134,29 +136,19 @@ const App = {
     if (btn) { btn.disabled = true; btn.innerText = "Creating Account..."; }
 
     try {
-      await API.register({
+      const regRes = await API.register({
         email,
         password,
         role: "citizen",
         zone
       });
 
-      // Switch to Login tab, prefill email, and prompt user to log in
-      this.switchGatewayTab("login");
-      this.fillGatewayLogin(email, "");
-      
-      const newAlert = document.getElementById("gateway-status-alert");
-      if (newAlert) {
-        newAlert.innerHTML = `
-          <div class="alert alert-success py-2 small shadow-sm">
-            <strong>✅ Account created successfully!</strong><br>
-            Please enter your password to log in and enter the app.
-          </div>
-        `;
-      }
+      try { sessionStorage.setItem("sw_user_logged_in", "true"); } catch (e) {}
+      this.showAppInterface(regRes.user);
+      SWNotice.success(`Welcome to SmartWaste, ${regRes.user.name || 'Citizen'}!`);
       if (btn) { btn.disabled = false; btn.innerText = "Create Citizen Account 🚀"; }
     } catch (err) {
-      alertEl.innerHTML = `<div class="alert alert-danger py-2 small">${err.message}</div>`;
+      alertEl.innerHTML = `<div class="alert alert-danger py-2 small shadow-sm">${err.message}</div>`;
       if (btn) { btn.disabled = false; btn.innerText = "Create Citizen Account 🚀"; }
     }
   },
@@ -177,11 +169,22 @@ const App = {
 
     try {
       const loginRes = await API.login(email, password);
+      try { sessionStorage.setItem("sw_user_logged_in", "true"); } catch (e) {}
       this.showAppInterface(loginRes.user);
     } catch (err) {
-      alertEl.innerHTML = `<div class="alert alert-danger py-2 small">${err.message}</div>`;
+      alertEl.innerHTML = `<div class="alert alert-danger py-2 small shadow-sm">${err.message}</div>`;
       if (btn) { btn.disabled = false; btn.innerText = "Sign In to Portal →"; }
     }
+  },
+
+  async logout() {
+    try {
+      await API.logout();
+    } catch (e) {}
+    try { sessionStorage.removeItem("sw_user_logged_in"); } catch (e) {}
+    try { localStorage.removeItem("sw_active_session_user"); } catch (e) {}
+    this.currentUser = null;
+    this.showGatewayScreen();
   },
 
   async switchRole(role) {

@@ -24,6 +24,13 @@ const CitizenPortal = {
     this.renderDashboard();
   },
 
+  formatDateTime(isoStr) {
+    if (!isoStr) return "Recently";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "Recently";
+    return `${d.toLocaleDateString([], {day: 'numeric', month: 'short'})}, ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+  },
+
   clearSessionReports() {
     sessionStorage.removeItem("sw_citizen_session_report_ids");
     this.renderDashboard();
@@ -58,18 +65,15 @@ const CitizenPortal = {
       const stats = statsRes.stats || {};
       const unreadNotifs = notifRes.unread_count || 0;
 
-      // Track reports uploaded in current session
-      let sessionReportIds = [];
-      try {
-        sessionReportIds = JSON.parse(sessionStorage.getItem("sw_citizen_session_report_ids") || "[]");
-      } catch (e) {
-        sessionReportIds = [];
+      // Display all previous reports for this citizen or community (newest first)
+      let reports = allReports;
+      if (user && user.role === 'citizen') {
+        const userSpecific = allReports.filter(r => r.citizen_id === user.id || r.citizen_name === citizenName);
+        if (userSpecific.length > 0) {
+          reports = userSpecific;
+        }
       }
-
-      // Display reports uploaded in this active session or all if none in session
-      const reports = sessionReportIds.length > 0 
-        ? allReports.filter(r => sessionReportIds.includes(r.id) && !["COMPLETED", "REJECTED"].includes(r.status))
-        : allReports;
+      reports.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
       container.innerHTML = `
         <div class="citizen-dashboard">
@@ -105,7 +109,7 @@ const CitizenPortal = {
             <!-- Stats Ribbon -->
             <div class="row mt-4 pt-3 border-top border-white border-opacity-25 g-3 text-center text-sm-start">
               <div class="col-6 col-md-3">
-                <div class="fs-4 fw-bold">${allReports.length}</div>
+                <div class="fs-4 fw-bold">${reports.length}</div>
                 <div class="small opacity-75">My Total Reports</div>
               </div>
               <div class="col-6 col-md-3">
@@ -113,7 +117,7 @@ const CitizenPortal = {
                 <div class="small opacity-75">Cleanliness Points (${stats.rank_tier || 'Eco Scout'})</div>
               </div>
               <div class="col-6 col-md-3">
-                <div class="fs-4 fw-bold">${resolvedCount}</div>
+                <div class="fs-4 fw-bold">${reports.filter(r => r.status === 'COMPLETED').length}</div>
                 <div class="small opacity-75">Resolved by Municipality</div>
               </div>
               <div class="col-6 col-md-3">
@@ -247,7 +251,7 @@ const CitizenPortal = {
                   </div>
                   
                   <div class="pt-3 mt-3 border-top d-flex justify-content-between align-items-center">
-                    <small class="text-muted">Updated: ${new Date(r.updated_at || r.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
+                    <small class="text-muted">Updated: ${CitizenPortal.formatDateTime(r.updated_at || r.created_at)}</small>
                     <button class="btn btn-sm btn-link text-success p-0 fw-bold text-decoration-none" onclick="event.stopPropagation(); CitizenPortal.viewReportDetail('${r.id}')">Track Timeline →</button>
                   </div>
                 </div>

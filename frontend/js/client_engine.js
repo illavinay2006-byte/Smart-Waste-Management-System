@@ -179,10 +179,41 @@ const ClientEngine = {
     }
   },
 
+  // Helper to ensure all tasks and reports in localStorage have valid assigned_at timestamps
+  migrateTaskAssignedDates() {
+    try {
+      const reportsRaw = localStorage.getItem("sw_reports");
+      if (!reportsRaw) return;
+      const reports = JSON.parse(reportsRaw);
+      let changed = false;
+      const now = Date.now();
+      reports.forEach((r, idx) => {
+        if (r.task) {
+          if (!r.task.assigned_at || r.task.assigned_at === "undefined" || r.task.assigned_at === "null" || isNaN(new Date(r.task.assigned_at).getTime())) {
+            r.task.assigned_at = r.updated_at || r.created_at || new Date(now - 3600000 * (idx + 2)).toISOString();
+            changed = true;
+          }
+        }
+      });
+      if (changed) {
+        localStorage.setItem("sw_reports", JSON.stringify(reports));
+      }
+    } catch (e) {
+      console.warn("Migration of task assigned dates skipped:", e);
+    }
+  },
+
   // Initialize Default Database in localStorage
   initDB() {
     this.migrateReportImageUrls();
     this.migrateWorkerData();
+    this.migrateTaskAssignedDates();
+
+    // Ensure initial browser visit starts on login page unless user has logged in during this session
+    if (typeof sessionStorage !== "undefined" && !sessionStorage.getItem("sw_user_logged_in")) {
+      localStorage.removeItem("sw_active_session_user");
+    }
+
     if (localStorage.getItem("sw_db_initialized_v2")) {
       this.initialized = true;
       return;
@@ -460,7 +491,8 @@ const ClientEngine = {
           id: 104,
           worker_id: 3,
           worker_name: "Ravi",
-          status: "COMPLETED"
+          status: "COMPLETED",
+          assigned_at: new Date(Date.now() - 3600000 * 30).toISOString()
         },
         history: [
           { status: "SUBMITTED", changed_by: "Akash Kothagorla", notes: "Submitted", timestamp: new Date(Date.now() - 3600000 * 48).toISOString() },
@@ -555,7 +587,6 @@ const ClientEngine = {
     localStorage.setItem("sw_notifications", JSON.stringify(defaultNotifications));
     localStorage.setItem("sw_emails", JSON.stringify(defaultEmails));
     localStorage.setItem("sw_collection_points", JSON.stringify(defaultCollectionPoints));
-    localStorage.setItem("sw_active_session_user", JSON.stringify(defaultUsers[0])); // Citizen Akash
     localStorage.setItem("sw_db_initialized_v2", "true");
     this.initialized = true;
   },
@@ -585,8 +616,10 @@ const ClientEngine = {
   setCurrentUser(user) {
     if (user) {
       localStorage.setItem("sw_active_session_user", JSON.stringify(user));
+      try { sessionStorage.setItem("sw_user_logged_in", "true"); } catch (e) {}
     } else {
       localStorage.removeItem("sw_active_session_user");
+      try { sessionStorage.removeItem("sw_user_logged_in"); } catch (e) {}
     }
   },
 

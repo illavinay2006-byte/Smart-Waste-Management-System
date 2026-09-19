@@ -112,18 +112,29 @@ const API = {
       const users = ClientEngine.get("users");
       const user = users.find(u => u.email.toLowerCase() === email);
 
-      const isDemo = email.endsWith("@demo.com") && ["demo123", "citizen123", "officer123", "worker123"].includes(password);
-      if (!user || (!isDemo && password.length < 3)) {
-        const err = new Error("Invalid email or password");
-        err.status = 401; err.data = { error: "Invalid email or password" };
+      if (!user) {
+        const err = new Error("Invalid email or password. Please check your credentials or register a new account.");
+        err.status = 401; err.data = { error: err.message };
         throw err;
       }
+
+      const isDemo = (email.endsWith("@demo.com") || user.role === "officer" || user.role === "worker") && 
+                     ["demo123", "citizen123", "officer123", "worker123", "password"].includes(password);
+      const isPassCorrect = user.password ? (user.password === password) : (isDemo || password.length >= 3);
+
+      if (!isPassCorrect) {
+        const err = new Error("Incorrect password. Please try again.");
+        err.status = 401; err.data = { error: err.message };
+        throw err;
+      }
+
       ClientEngine.setCurrentUser(user);
       return { message: "Login successful", user };
     }
 
     if (path === "/auth/register" && method === "POST") {
       const email = (parsedBody.email || "").trim().toLowerCase();
+      const password = (parsedBody.password || "").trim();
       const zone = parsedBody.zone || "Ward 1 - Chirala Clock Tower (Main Bazaar)";
       const users = ClientEngine.get("users");
       let user = users.find(u => u.email.toLowerCase() === email);
@@ -134,6 +145,7 @@ const API = {
           id: users.length + 1,
           name: formattedName,
           email: email,
+          password: password,
           role: "citizen",
           zone: zone,
           points: 100,
@@ -142,6 +154,9 @@ const API = {
           avatar_url: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80"
         };
         users.push(user);
+        ClientEngine.set("users", users);
+      } else {
+        user.password = password;
         ClientEngine.set("users", users);
       }
       ClientEngine.setCurrentUser(user);
@@ -346,21 +361,43 @@ const API = {
       const tasks = [];
       for (const r of reports) {
         if (["ASSIGNED", "ACCEPTED", "IN_PROGRESS", "AWAITING_VERIFICATION", "RE_CLEANING_REQUIRED", "COMPLETED"].includes(r.status)) {
+          const wid = r.task?.worker_id || 3;
+          if (currentUser?.role === "worker" && currentUser?.id && wid !== currentUser.id) {
+            continue;
+          }
+          const assignedAt = r.task?.assigned_at || r.updated_at || r.created_at || new Date().toISOString();
+          const taskId = r.task?.id || (r.id ? parseInt(r.id.replace(/\D/g, '')) || 101 : 101);
+
+          let distKm = null;
+          if (currentUser?.latitude && currentUser?.longitude && r.latitude && r.longitude) {
+            distKm = ClientEngine.calculateHaversineDistance(currentUser.latitude, currentUser.longitude, r.latitude, r.longitude);
+          }
+
           tasks.push({
-            id: r.task?.id || Math.floor(Math.random() * 900) + 100,
+            id: taskId,
             report_id: r.id,
             category: r.category,
             severity: r.severity,
             priority: r.priority,
             status: r.task?.status || r.status,
             location_name: r.location_name,
+            ward: r.ward,
             latitude: r.latitude,
             longitude: r.longitude,
+            distance_km: distKm,
             before_image: r.before_image,
             after_image: r.after_image || r.task?.proof_image,
-            worker_id: r.task?.worker_id || 3,
+            worker_id: wid,
             worker_name: r.task?.worker_name || "Ravi",
-            created_at: r.created_at
+            assigned_at: assignedAt,
+            accepted_at: r.task?.accepted_at,
+            started_at: r.task?.started_at,
+            proof_submitted_at: r.task?.proof_submitted_at,
+            completed_at: r.task?.completed_at,
+            recleaning_notes: r.task?.recleaning_notes,
+            worker_notes: r.task?.worker_notes,
+            created_at: r.created_at,
+            report: r
           });
         }
       }

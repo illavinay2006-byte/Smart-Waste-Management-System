@@ -4,7 +4,7 @@ const CitizenPortal = {
   currentTab: 'reports',
   wizardData: {
     imageFile: null,
-    imageUrl: "/uploads/sample_mixed_waste.jpg",
+    imageUrl: "./uploads/sample_mixed_waste.jpg",
     latitude: 15.8246,
     longitude: 80.3522,
     location_name: "Ward 1 - Chirala Clock Tower, Main Bazaar",
@@ -237,7 +237,7 @@ const CitizenPortal = {
                       <small class="text-muted">${r.id}</small>
                     </div>
                     <div class="d-flex gap-3 mt-2">
-                      <img src="${r.before_image || '/uploads/sample_mixed_waste.jpg'}" alt="evidence" class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
+                      <img src="${window.resolveImageUrl(r.before_image)}" onerror="window.handleImageError(this)" alt="evidence" class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
                       <div>
                         <h6 class="fw-bold mb-1 text-truncate" style="max-width: 260px;">${r.category}</h6>
                         <p class="small text-muted mb-1 text-truncate" style="max-width: 260px;">📍 ${r.location_name || 'Ward 5'}</p>
@@ -614,7 +614,7 @@ const CitizenPortal = {
     this.activeStep = 1;
     this.wizardData = {
       imageFile: null,
-      imageUrl: "/uploads/sample_mixed_waste.jpg",
+      imageUrl: "./uploads/sample_mixed_waste.jpg",
       latitude: 15.8246,
       longitude: 80.3522,
       location_name: "Ward 1 - Chirala Clock Tower, Main Bazaar",
@@ -695,7 +695,7 @@ const CitizenPortal = {
         </div>
 
         <div class="border rounded p-3 text-center mb-3 bg-light" id="preview-box">
-          <img id="image-preview" src="${this.wizardData.imageUrl}" style="max-height: 260px; max-width: 100%; border-radius: 8px; object-fit: contain;" alt="Waste Preview">
+          <img id="image-preview" src="${window.resolveImageUrl(this.wizardData.imageUrl)}" onerror="window.handleImageError(this)" style="max-height: 260px; max-width: 100%; border-radius: 8px; object-fit: contain;" alt="Waste Preview">
         </div>
 
         <!-- Validation Status Ribbon -->
@@ -710,10 +710,10 @@ const CitizenPortal = {
         <div class="mb-4">
           <label class="form-label small fw-bold text-muted mb-1">Or test with realistic sample evidence:</label>
           <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('/uploads/sample_mixed_waste.jpg', 'Mixed Waste', 'High')">📦 Mixed Waste</button>
-            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('/uploads/sample_plastic.jpg', 'Plastic', 'Medium')">🥤 Plastic</button>
-            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('/uploads/sample_organic.jpg', 'Organic / Wet Waste', 'High')">🥬 Organic Dump</button>
-            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('/uploads/sample_ewaste.jpg', 'E-Waste', 'High')">💻 E-Waste</button>
+            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('./uploads/sample_mixed_waste.jpg', 'Mixed Waste', 'High')">📦 Mixed Waste</button>
+            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('./uploads/sample_plastic.jpg', 'Plastic', 'Medium')">🥤 Plastic</button>
+            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('./uploads/sample_organic.jpg', 'Organic / Wet Waste', 'High')">🥬 Organic Dump</button>
+            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="CitizenPortal.selectSample('./uploads/sample_ewaste.jpg', 'E-Waste', 'High')">💻 E-Waste</button>
           </div>
         </div>
 
@@ -853,9 +853,9 @@ const CitizenPortal = {
     if (fileInput) fileInput.value = "";
     const preview = document.getElementById("image-preview");
     if (preview) {
-      preview.src = "/uploads/sample_mixed_waste.jpg";
+      preview.src = "./uploads/sample_mixed_waste.jpg";
     }
-    this.wizardData.imageUrl = "/uploads/sample_mixed_waste.jpg";
+    this.wizardData.imageUrl = "./uploads/sample_mixed_waste.jpg";
     const statusEl = document.getElementById("image-validation-status");
     if (statusEl) {
       statusEl.style.display = "none";
@@ -1240,7 +1240,7 @@ const CitizenPortal = {
           <div class="p-3 bg-light rounded mb-3 border">
             <div class="row g-3 align-items-center">
               <div class="col-12 col-md-4 text-center">
-                <img src="${this.wizardData.imageUrl}" class="rounded shadow-sm" style="max-height: 160px; max-width: 100%; object-fit: contain; background: #fff;" alt="Inspected Evidence">
+                <img src="${window.resolveImageUrl(this.wizardData.imageUrl)}" onerror="window.handleImageError(this)" class="rounded shadow-sm" style="max-height: 160px; max-width: 100%; object-fit: contain; background: #fff;" alt="Inspected Evidence">
               </div>
               <div class="col-12 col-md-8">
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -1468,7 +1468,7 @@ const CitizenPortal = {
       if (this.wizardData.imageFile) {
         formData.append("image", this.wizardData.imageFile);
       } else {
-        formData.append("image_url", this.wizardData.imageUrl || "/uploads/sample_mixed_waste.jpg");
+        formData.append("image_url", window.resolveImageUrl(this.wizardData.imageUrl || "./uploads/sample_mixed_waste.jpg"));
       }
       formData.append("category", this.wizardData.category);
       formData.append("severity", this.wizardData.severity || "Medium");
@@ -1655,7 +1655,7 @@ const CitizenPortal = {
                 <span>📸 Before Cleanup</span>
                 <span class="badge bg-secondary">Reported</span>
               </div>
-              <img src="${rep.before_image || '/uploads/sample_mixed_waste.jpg'}" class="compare-img" alt="Before">
+              <img src="${window.resolveImageUrl(rep.before_image)}" onerror="window.handleImageError(this)" class="compare-img" alt="Before">
             </div>
 
             <div class="compare-card">
@@ -1666,7 +1666,7 @@ const CitizenPortal = {
                 </span>
               </div>
               ${rep.after_image ? `
-                <img src="${rep.after_image}" class="compare-img" alt="After">
+                <img src="${window.resolveImageUrl(rep.after_image)}" onerror="window.handleImageError(this)" class="compare-img" alt="After">
               ` : `
                 <div class="d-flex align-items-center justify-content-center h-100 p-4 text-center text-muted bg-light" style="min-height: 220px;">
                   <div>

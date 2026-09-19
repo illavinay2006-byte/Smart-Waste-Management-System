@@ -531,7 +531,7 @@ const MunicipalConsole = {
                             <span>📷 BEFORE (Reported Evidence)</span>
                             <span class="badge bg-light text-dark">${rep.category}</span>
                           </div>
-                          <img src="${rep.before_image || '/uploads/sample_mixed_waste.jpg'}" class="compare-img" alt="Before Evidence" style="cursor: pointer;" onclick="window.open('${rep.before_image || '/uploads/sample_mixed_waste.jpg'}', '_blank')" title="Click to view full photo">
+                          <img src="${window.resolveImageUrl(rep.before_image)}" onerror="window.handleImageError(this)" class="compare-img" alt="Before Evidence" style="cursor: pointer;" onclick="window.open(window.resolveImageUrl('${rep.before_image || ''}'), '_blank')" title="Click to view full photo">
                         </div>
 
                         <div class="compare-card">
@@ -539,7 +539,7 @@ const MunicipalConsole = {
                             <span>✨ AFTER (Worker Completion Proof)</span>
                             <span class="badge bg-light text-dark">Worker Proof</span>
                           </div>
-                          <img src="${rep.after_image || task.proof_image_url || '/uploads/sample_cleaned_after.jpg'}" class="compare-img" alt="After Proof" style="cursor: pointer;" onclick="window.open('${rep.after_image || task.proof_image_url || '/uploads/sample_cleaned_after.jpg'}', '_blank')" title="Click to view full photo">
+                          <img src="${window.resolveImageUrl(rep.after_image || (task && (task.proof_image_url || task.proof_image)))}" onerror="window.handleImageError(this)" class="compare-img" alt="After Proof" style="cursor: pointer;" onclick="window.open(window.resolveImageUrl('${rep.after_image || (task && (task.proof_image_url || task.proof_image)) || ''}'), '_blank')" title="Click to view full photo">
                         </div>
                       </div>
 
@@ -622,13 +622,13 @@ const MunicipalConsole = {
             <div class="compare-card-header bg-danger text-white">
               📷 BEFORE (Reported Evidence)
             </div>
-            <img src="${rep.before_image || '/uploads/sample_mixed_waste.jpg'}" class="compare-img" alt="Before Evidence">
+            <img src="${window.resolveImageUrl(rep.before_image)}" onerror="window.handleImageError(this)" class="compare-img" alt="Before Evidence">
           </div>
           <div class="compare-card">
             <div class="compare-card-header bg-success text-white">
               ✨ AFTER (Worker Proof)
             </div>
-            <img src="${rep.after_image || (task && task.proof_image_url) || '/uploads/sample_cleaned_after.jpg'}" class="compare-img" alt="After Proof">
+            <img src="${window.resolveImageUrl(rep.after_image || (task && (task.proof_image_url || task.proof_image)))}" onerror="window.handleImageError(this)" class="compare-img" alt="After Proof">
           </div>
         </div>
 
@@ -1216,7 +1216,7 @@ const MunicipalConsole = {
       body.innerHTML = `
         <div class="row g-3 mb-3">
           <div class="col-md-6">
-            <img src="${rep.before_image || '/uploads/sample_mixed_waste.jpg'}" class="rounded w-100 shadow-sm" style="max-height: 220px; object-fit: cover;">
+            <img src="${window.resolveImageUrl(rep.before_image)}" onerror="window.handleImageError(this)" class="rounded w-100 shadow-sm" style="max-height: 220px; object-fit: cover;">
           </div>
           <div class="col-md-6">
             <div class="d-flex align-items-center gap-2 mb-1">

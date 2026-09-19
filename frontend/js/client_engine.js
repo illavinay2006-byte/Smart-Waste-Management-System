@@ -1,5 +1,26 @@
-// SmartWaste In-Browser Client-Side Engine
-// Powers 100% serverless execution on GitHub Pages, VS Code Live Server, and static hosting.
+// Global image resolver and error fallback for static hosting / GitHub Pages / Live Server
+window.resolveImageUrl = function(path) {
+  if (!path) return "./uploads/sample_mixed_waste.jpg";
+  if (typeof path !== "string") return "./uploads/sample_mixed_waste.jpg";
+  if (path.startsWith("data:") || path.startsWith("blob:") || path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  // Strip any leading slashes, dots, and upload folder prefix variations
+  let clean = path.replace(/^[./\\]+/, "");
+  if (clean.toLowerCase().startsWith("uploads/")) {
+    clean = clean.substring("uploads/".length);
+  } else if (clean.toLowerCase().startsWith("uploads\\")) {
+    clean = clean.substring("uploads\\".length);
+  }
+  return "./uploads/" + clean;
+};
+
+window.handleImageError = function(img) {
+  if (!img) return;
+  if (img._hasFailed) return;
+  img._hasFailed = true;
+  img.src = "./uploads/sample_mixed_waste.jpg";
+};
 
 const ClientEngine = {
   initialized: false,
@@ -60,8 +81,56 @@ const ClientEngine = {
     return { priority, score, reasons };
   },
 
+  // Helper to migrate existing reports in localStorage
+  migrateReportImageUrls() {
+    try {
+      const reportsRaw = localStorage.getItem("sw_reports");
+      if (!reportsRaw) return;
+      const reports = JSON.parse(reportsRaw);
+      let changed = false;
+      if (Array.isArray(reports)) {
+        reports.forEach(r => {
+          if (r.before_image) {
+            const resolved = window.resolveImageUrl(r.before_image);
+            if (resolved !== r.before_image) {
+              r.before_image = resolved;
+              changed = true;
+            }
+          }
+          if (r.after_image) {
+            const resolved = window.resolveImageUrl(r.after_image);
+            if (resolved !== r.after_image) {
+              r.after_image = resolved;
+              changed = true;
+            }
+          }
+          if (r.task?.proof_image) {
+            const resolved = window.resolveImageUrl(r.task.proof_image);
+            if (resolved !== r.task.proof_image) {
+              r.task.proof_image = resolved;
+              changed = true;
+            }
+          }
+          if (r.task?.proof_image_url) {
+            const resolved = window.resolveImageUrl(r.task.proof_image_url);
+            if (resolved !== r.task.proof_image_url) {
+              r.task.proof_image_url = resolved;
+              changed = true;
+            }
+          }
+        });
+        if (changed) {
+          localStorage.setItem("sw_reports", JSON.stringify(reports));
+        }
+      }
+    } catch (e) {
+      console.warn("Migration of report image URLs skipped:", e);
+    }
+  },
+
   // Initialize Default Database in localStorage
   initDB() {
+    this.migrateReportImageUrls();
     if (localStorage.getItem("sw_db_initialized_v2")) {
       this.initialized = true;
       return;
@@ -167,7 +236,7 @@ const ClientEngine = {
         road_obstruction: true,
         observed_duration: "3–7 days",
         is_emergency: false,
-        before_image: "uploads/sample_mixed_waste.jpg",
+        before_image: "./uploads/sample_mixed_waste.jpg",
         created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 4).toISOString(),
         history: [
@@ -190,7 +259,7 @@ const ClientEngine = {
         road_obstruction: false,
         observed_duration: "1–2 days",
         is_emergency: false,
-        before_image: "uploads/sample_plastic.jpg",
+        before_image: "./uploads/sample_plastic.jpg",
         created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 6).toISOString(),
         history: [
@@ -214,7 +283,7 @@ const ClientEngine = {
         road_obstruction: true,
         observed_duration: "3–7 days",
         is_emergency: true,
-        before_image: "uploads/sample_organic.jpg",
+        before_image: "./uploads/sample_organic.jpg",
         created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
         task: {
@@ -247,7 +316,7 @@ const ClientEngine = {
         road_obstruction: true,
         observed_duration: "1–2 days",
         is_emergency: false,
-        before_image: "uploads/sample_mixed_waste.jpg",
+        before_image: "./uploads/sample_mixed_waste.jpg",
         created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 1).toISOString(),
         task: {
@@ -283,8 +352,8 @@ const ClientEngine = {
         road_obstruction: false,
         observed_duration: "3–7 days",
         is_emergency: false,
-        before_image: "uploads/sample_plastic.jpg",
-        after_image: "uploads/sample_cleaned_after.jpg",
+        before_image: "./uploads/sample_plastic.jpg",
+        after_image: "./uploads/sample_cleaned_after.jpg",
         worker_notes: "Beach approach road thoroughly cleared, swept, and bleached with municipal disinfectant.",
         created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
@@ -297,7 +366,7 @@ const ClientEngine = {
           assigned_at: new Date(Date.now() - 3600000 * 16).toISOString(),
           started_at: new Date(Date.now() - 3600000 * 6).toISOString(),
           proof_submitted_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-          proof_image: "uploads/sample_cleaned_after.jpg",
+          proof_image: "./uploads/sample_cleaned_after.jpg",
           proof_notes: "Beach approach road thoroughly cleared, swept, and bleached with municipal disinfectant."
         },
         history: [
@@ -325,8 +394,8 @@ const ClientEngine = {
         road_obstruction: false,
         observed_duration: "1–2 days",
         is_emergency: false,
-        before_image: "uploads/sample_organic.jpg",
-        after_image: "uploads/sample_cleaned_market.jpg",
+        before_image: "./uploads/sample_organic.jpg",
+        after_image: "./uploads/sample_cleaned_market.jpg",
         worker_notes: "Market gate cleared, washed, and sprayed with lime powder.",
         created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
         updated_at: new Date(Date.now() - 3600000 * 12).toISOString(),

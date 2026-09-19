@@ -82,7 +82,7 @@ const WorkerPortal = {
 
                     <div class="row g-2 align-items-center my-2">
                       <div class="col-3 col-sm-2">
-                        <img src="${rep.before_image || '/uploads/sample_mixed_waste.jpg'}" class="rounded w-100" style="height: 65px; object-fit: cover;">
+                        <img src="${window.resolveImageUrl(rep.before_image)}" onerror="window.handleImageError(this)" class="rounded w-100" style="height: 65px; object-fit: cover;">
                       </div>
                       <div class="col-9 col-sm-10">
                         <h6 class="fw-bold mb-1">${rep.category || 'Waste Task'}</h6>
@@ -197,7 +197,7 @@ const WorkerPortal = {
             </div>
 
             <div class="text-center mb-3">
-              <img id="worker-proof-preview" src="/uploads/sample_cleaned_after.jpg" class="img-fluid rounded border shadow-sm" style="max-height: 220px; width: 100%; object-fit: cover;">
+              <img id="worker-proof-preview" src="./uploads/sample_cleaned_after.jpg" onerror="window.handleImageError(this)" class="img-fluid rounded border shadow-sm" style="max-height: 220px; width: 100%; object-fit: cover;">
             </div>
 
             <div class="mb-3">
@@ -208,10 +208,10 @@ const WorkerPortal = {
             <div class="mb-3">
               <label class="form-label small fw-bold">Or Select Demo Cleaned Photo Proof:</label>
               <div class="d-flex gap-2 flex-wrap">
-                <button type="button" class="btn btn-sm btn-outline-success" onclick="WorkerPortal.selectSampleProof('/uploads/sample_cleaned_after.jpg')">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="WorkerPortal.selectSampleProof('./uploads/sample_cleaned_after.jpg')">
                   🌿 Roadside Cleared
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-success" onclick="WorkerPortal.selectSampleProof('/uploads/sample_cleaned_market.jpg')">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="WorkerPortal.selectSampleProof('./uploads/sample_cleaned_market.jpg')">
                   🏪 Market Area Cleared
                 </button>
               </div>
@@ -246,12 +246,12 @@ const WorkerPortal = {
   },
 
   selectedFile: null,
-  selectedProofUrl: "/uploads/sample_cleaned_after.jpg",
+  selectedProofUrl: "./uploads/sample_cleaned_after.jpg",
 
   selectSampleProof(url) {
     this.selectedFile = null;
     this.selectedProofUrl = url;
-    document.getElementById("worker-proof-preview").src = url;
+    document.getElementById("worker-proof-preview").src = window.resolveImageUrl(url);
   },
 
   async submitProof(taskId) {
@@ -267,7 +267,7 @@ const WorkerPortal = {
       if (this.selectedFile) {
         fd.append("image", this.selectedFile);
       } else {
-        fd.append("image_url", this.selectedProofUrl);
+        fd.append("image_url", window.resolveImageUrl(this.selectedProofUrl));
       }
       fd.append("notes", notes);
 

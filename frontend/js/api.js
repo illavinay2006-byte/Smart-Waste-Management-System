@@ -239,7 +239,7 @@ const API = {
     }
 
     if (path === "/reports" && method === "POST") {
-      let imgSrc = parsedBody.image_url || "uploads/sample_mixed_waste.jpg";
+      let imgSrc = parsedBody.image_url ? (window.resolveImageUrl ? window.resolveImageUrl(parsedBody.image_url) : parsedBody.image_url) : "./uploads/sample_mixed_waste.jpg";
       if (parsedBody.image instanceof File) {
         imgSrc = URL.createObjectURL(parsedBody.image);
       }
@@ -466,7 +466,7 @@ const API = {
       const reports = ClientEngine.get("reports");
       const r = reports.find(x => x.task && x.task.id === taskId) || reports.find(x => x.status === "IN_PROGRESS");
       if (r) {
-        let proofImg = parsedBody.image_url || "uploads/sample_cleaned_after.jpg";
+        let proofImg = parsedBody.image_url ? (window.resolveImageUrl ? window.resolveImageUrl(parsedBody.image_url) : parsedBody.image_url) : "./uploads/sample_cleaned_after.jpg";
         if (parsedBody.image instanceof File) {
           proofImg = URL.createObjectURL(parsedBody.image);
         }
